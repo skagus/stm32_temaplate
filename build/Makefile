@@ -49,10 +49,11 @@ DEP =	$(OBJ:%.o=%.d)
 
 ################  Define
 DEFINE = 
-DEFINE += -DSTM32F10X_LD_VL
+# STM32F103C8T6 <-- MD performance.
+DEFINE += -DSTM32F10X_MD
 DEFINE += -DUSE_STDPERIPH_DRIVER
 DEFINE += -DUSE_FULL_ASSERT
-
+DEFINE += -DHSE_VALUE=8000000
 ################  Library directory.
 PRJ_LIB_DIR =
 

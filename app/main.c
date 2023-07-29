@@ -13,11 +13,29 @@ void inc(void)
 	i += off;
 }
 
-void _send_uart(USART_TypeDef* pPort, char nCh)
+void _mydelay(uint32_t nCycles)
+{
+	while(nCycles-- > 0)
+	{
+		__asm volatile("nop");
+	}
+}
+
+void _send_char(USART_TypeDef* pPort, char nCh)
 {
 	while(0 == (pPort->SR & (1<<7)));
 	USART_SendData(pPort, nCh);
 }
+
+void _send_string(USART_TypeDef* pPort, char* szStr)
+{
+	while(*szStr)
+	{
+		_send_char(pPort, *szStr);
+		szStr++;
+	}
+}
+
 
 int main(void)
 {
@@ -42,9 +60,12 @@ int main(void)
 	for(;;)//int i=0; i< 10000; i++)
 	{
 		GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_RESET);
-		_send_uart(USART1, 'a');
+		_send_string(USART1, "Line 1\n");
+		_mydelay(1000000);
+
 		GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_SET);
-		_send_uart(USART1, 'b');
+		_send_string(USART1, "Line 2\n");
+		_mydelay(1000000);
 	}
 	while(1);
 }

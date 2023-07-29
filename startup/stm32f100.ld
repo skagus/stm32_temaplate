@@ -12,7 +12,7 @@ There will be a link error if there is not this amount of RAM free at the
 end.
 */
 
-_Minimum_Stack_Size = 256;
+_Minimum_Stack_Size = 512;
 
 ENTRY(Reset_Handler)
 
@@ -21,8 +21,8 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-  RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 8K
-  FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 128K
+	FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 64K
+	RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 8K
 }
 
 __ram_start__ = ORIGIN(RAM);
@@ -30,8 +30,6 @@ __ram_size__  = LENGTH(RAM);
 __ram_end__   = __ram_start__ + __ram_size__;
 _estack = __ram_end__;
 /* highest address of the user mode stack */
-
-
 
 PROVIDE ( _Stack_Limit = _estack - _Minimum_Stack_Size );
 
