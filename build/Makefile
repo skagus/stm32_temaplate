@@ -226,6 +226,8 @@ $(OBJDIR)/%.s.o : $(PRJ_TOP)/%.S
 ################### File Creation #################
 all: elf bin lst hex size
 
+relink: clean_link all
+
 $(PRJ_TOP)/$(VER_FILE):
 	$(INFO)
 	@echo "char* gpVersion = \"$$(date +%Y%m%d_%H%M%S)\";" > $@
@@ -290,12 +292,15 @@ run: $(TARGET).bin
 gccversion : 
 	$(ECHO)$(CC) --version
 
-clean:
+clean: clean_link
+	$(REMOVEDIR) $(OBJDIR)
+
+clean_link:
 	$(REMOVE) $(TARGET).elf $(TARGET).a \
 			$(TARGET).hex $(TARGET).bin \
 			$(TARGET).lss $(TARGET).sym \
 			$(TARGET).map
-	$(REMOVEDIR) $(OBJDIR)
+
 
 # Include the dependency files.
 -include $(patsubst %.c,$(OBJDIR)/%.c.d,$(CSRC))
