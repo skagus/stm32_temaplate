@@ -21,8 +21,10 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-	FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 64K
-	RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 8K
+	FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 32K
+	FLASH2 (rx): ORIGIN = 0x08008000, LENGTH = 32K
+	RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 4K
+	RAM2 (rx)  : ORIGIN = 0x20001000, LENGTH = 4K
 }
 
 __ram_start__ = ORIGIN(RAM);
@@ -40,8 +42,7 @@ SECTIONS
 	.text :
 	{
 		KEEP(*(.isr_vector))            /* Startup code */
-		*(.text)                   /* code */
-		*(.text.*)                 /* remaining code */
+		*(EXCLUDE_FILE(*main.c.o).text*)
 		*(.rodata)                 /* read-only data (constants) */
 		*(.rodata.*)
 		*(.glue_7)
@@ -51,6 +52,10 @@ SECTIONS
 		*(.ARM.extab* .gnu.linkonce.armextab.*)
 	} >FLASH
 
+	.text2 :
+	{
+		*main.c.o(.text*)
+	} >FLASH2
 	/* for exception handling/unwind - some Newlib functions (in
 	common with C++ and STDC++) use this. */
 	.ARM.extab :
@@ -74,20 +79,23 @@ SECTIONS
 	The program executes knowing that the data is in the RAM
 	but the loader puts the initial values in the FLASH (inidata).
 	It is one task of the startup to copy the initial values from FLASH to RAM. */
-	.data  : AT ( _sidata )
+	.data :
 	{
 		. = ALIGN(4);
 		/* This is used by the startup in order to initialize the .data secion */
 		_sdata = . ;
 
-		*(.data)
-		*(.data.*)
-
+/*		*(.data*) */
+		*(EXCLUDE_FILE(*stm32f10x_rcc.c.o).data*)
 		. = ALIGN(4);
 		/* This is used by the startup in order to initialize the .data secion */
 		_edata = . ;
-	} >RAM
+	} >RAM AT>FLASH
 
+	.data2 :
+	{
+		*stm32f10x_rcc.c.o(.data*)
+	} >RAM2 AT>FLASH
 
 	/* This is the uninitialized data section */
 	.bss :
