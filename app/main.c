@@ -5,9 +5,14 @@
 
 int i = 0;
 int off = 5;
+#define UNUSED(x)		(void)(x)
 
 void assert_failed(uint8_t* file, uint32_t line)
-{}
+{
+	UNUSED(file);
+	UNUSED(line);
+}
+
 void inc(void)
 {
 	i += off;
@@ -36,6 +41,7 @@ void _send_string(USART_TypeDef* pPort, char* szStr)
 	}
 }
 
+int main(void) __attribute__((section(".txt2")));
 
 int main(void)
 {
@@ -60,12 +66,12 @@ int main(void)
 	for(;;)//int i=0; i< 10000; i++)
 	{
 		GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_RESET);
-		_send_string(USART1, "Line 1\n");
-		_mydelay(1000000);
+//		_send_string(USART1, "Line 1\n");
+		_mydelay(10000);
 
 		GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_SET);
-		_send_string(USART1, "Line 2\n");
-		_mydelay(1000000);
+//		_send_string(USART1, "Line 2\n");
+		_mydelay(10000);
 	}
 	while(1);
 }

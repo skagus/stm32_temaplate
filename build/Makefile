@@ -5,15 +5,16 @@ TARGET = templ
 OBJDIR = obj
 
 MCU = cortex-m3
-#MCU =rv64imc
 
+# LTO has some bug?? (section configuration.)
+EN_LTO = FALSE
 BUILD_STRICT = TRUE
 BUILD_PRINT = TRUE
 
 ifeq ($(BUILD_PRINT), TRUE)
-ECHO = 
+	ECHO = 
 else
-ECHO = @
+	ECHO = @
 endif
 
 VER_FILE = version.c
@@ -85,44 +86,47 @@ INCLUDE =	$(patsubst %,-I$(PRJ_TOP)/%,$(PRJ_INC)) \
 #  -Wa,...:      tell GCC to pass this to the assembler.
 #    -adhlns...: create assembler listing
 FLAGS  = -mcpu=$(MCU)
-FLAGS += -mthumb
+#FLAGS += -mthumb
 FLAGS += -std=gnu99 # c89, c99, gnu89, gnu99
+FLAGS += -Wa,-adhlns=$(@:.o=.lst) # .o file assembly.
+FLAGS += -gdwarf-2 # debug format: dwarf-2
+FLAGS += -MMD -MP # dependancy generation.
 
+## Optimize ##
+FLAGS += -O2
+ifeq ($(EN_LTO),TRUE)
+	FLAGS += -flto
+endif
+
+## compiler configuration ##
 FLAGS += -funsigned-char
 FLAGS += -funsigned-bitfields
 FLAGS += -fshort-enums
-#FLAGS += -fpack-struct  # CAUTION: RISC-V can't handle un-aligned load/save.
-FLAGS += -fmessage-length=0
-
-FLAGS += -O1
-#FLAGS += -msave-restore 
+FLAGS += -fmessage-length=0 # error message in a line (w/o wrap)
 FLAGS += -ffunction-sections
 FLAGS += -fdata-sections 
+#FLAGS += -fpack-struct  # CAUTION: RISC-V can't handle un-aligned load/save.
+#FLAGS += -msave-restore 
 #FLAGS += -fno-unit-at-a-time
 #FLAGS += -mshort-calls
-FLAGS += -g
-FLAGS += -Wa,-adhlns=$(@:.o=.lst)
-FLAGS += -gdwarf-2
-FLAGS += -Wno-comment
+FLAGS += --specs=nano.specs
 
-ifeq ($(BUILD_STRICT), TRUE)
-FLAGS += -Wall
-FLAGS += -Wunused
-FLAGS += -Wextra
-FLAGS += -Wstrict-prototypes
-#CFLAGS += -Wundef # for undefined macro evaluation
+## WARNING ##
+FLAGS += -Wcomment # enable warning for cascade comment.
 FLAGS += -Wunreachable-code
-FLAGS += -Wno-attributes # 
+ifeq ($(BUILD_STRICT),TRUE)
+	FLAGS += -Wall
+	FLAGS += -Wextra
+	FLAGS += -Wstrict-prototypes
+	#CFLAGS += -Wundef # for undefined macro evaluation
 endif
-
-FLAGS += -MMD -MP # dependancy generation.
 
 ################  C Options
 CFLAGS  = $(FLAGS)
 CFLAGS += $(DEP_OPT)
 CFLAGS += $(DEFINE)
 CFLAGS += $(INCLUDE)
-# CFLAGS += -fstack-usage  # show stack usage for each function.
+CFLAGS += -fstack-usage  # show stack usage for each function.
 CFLAGS += -fcallgraph-info  # make call graph information.
 #CFLAGS += -fdump-tree-optimized #
 #CFLAGS += -fdump-rtl-dfinish  # 
@@ -147,41 +151,31 @@ ASFLAGS += $(DEFINE)
 ASFLAGS += $(INCLUDE)
 
 ################  Linker Options
-# 64 KB of external RAM, starting after internal RAM (ATmega128!),
-# used for variables (.data/.bss) and heap (malloc()).
-#EXTMEMOPTS = -Wl,-Tdata=0x801100,--defsym=__heap_end=0x80ffff
-
-# 64 KB of external RAM, starting after internal RAM (ATmega128!),
-# only used for heap (malloc()).
-#EXTMEMOPTS = -Wl,--section-start,.data=0x801100,--defsym=__heap_end=0x80ffff
-
-EXTMEMOPTS =
-
 #  -Wl,...:     tell GCC to pass this to linker.
 #    -Map:      create map file
 #    --cref:    add cross reference to  map file
 LDS_OPT = $(patsubst %, -T $(PRJ_TOP)/%, $(LINK_SCRIPT))
 
 LDFLAGS = -g
-LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
+LDFLAGS += -mcpu=$(MCU)
+ifneq ($(EN_LTO),FALSE)
+	LDFLAGS += -flto
+endif
+LDFLAGS += -Xlinker -Map=$(TARGET).map
+LDFLAGS += -Xlinker --cref
+#LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += $(LDS_OPT)
-#LDFLAGS += -fstack-usage
+LDFLAGS += --specs=nosys.specs
 LDFLAGS += -nostartfiles
 #LDFLAGS += -nodefaultlibs
 #LDFLAGS += -nolibc
 #LDFLAGS += -nostdlib
 LDFLAGS += -Xlinker --gc-sections
 LDFLAGS += -Xlinker --print-memory-usage
-LDFLAGS += -mcpu=$(MCU)
-LDFLAGS += --specs=nosys.specs
-#LDFLAGS += --specs=nano.specs
+LDFLAGS += --specs=nano.specs
 #LDFLAGS += -mcmodel=medany
 #LDFLAGS += -msmall-data-limit=8
 LDFLAGS += -fmessage-length=0
-LDFLAGS += -ffunction-sections
-LDFLAGS += -fdata-sections
-#LDFLAGS += -fsigned-char
-#LDFLAGS += -fno-common
 
 ################### Action #################
 # add @ for silent.
@@ -255,7 +249,7 @@ $(PRJ_TOP)/$(VER_FILE):
 %.sym: %.elf
 	$(INFO)
 	$(DIR_CHK)
-	$(ECHO)$(NM) -n $< > $@
+	$(ECHO)$(NM) -S -l -n --format=sysv $< > $@
 
 %.a: $(OBJ)
 	$(INFO)
@@ -279,14 +273,14 @@ lst: $(TARGET).lss $(TARGET).sym
 size: $(TARGET).elf
 	$(INFO)
 	@$(SIZE) --format=gnu $<
-	@$(SIZE) --format=sysv --radix=16 --common $<
+	@$(SIZE) --format=gnu $< > $(TARGET).size
+	@$(SIZE) --format=sysv --radix=16 --common $< >> $(TARGET).size
 
 prog: $(TARGET).bin
 	stm32_isp.exe stm32_conf.ini
 
 run: $(TARGET).bin
 	stm32_isp.exe stm32_run.ini
-
 
 # Display compiler version information.
 gccversion : 
@@ -299,8 +293,7 @@ clean_link:
 	$(REMOVE) $(TARGET).elf $(TARGET).a \
 			$(TARGET).hex $(TARGET).bin \
 			$(TARGET).lss $(TARGET).sym \
-			$(TARGET).map
-
+			$(TARGET).map $(TARGET).size
 
 # Include the dependency files.
 -include $(patsubst %.c,$(OBJDIR)/%.c.d,$(CSRC))

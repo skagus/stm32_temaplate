@@ -37,7 +37,7 @@ void Reset_Handler(void)
 	dst = &_sbss;
 	while (dst < &_ebss)
 		*(dst++) = 0;
-
+	
 	SystemInit();
 	__libc_init_array();
 	main();
@@ -113,7 +113,7 @@ void DMA2_Channel3_IRQHandler(void) __attribute__((weak, alias("default_handler"
 void DMA2_Channel4_5_IRQHandler(void) __attribute__((weak, alias("default_handler")));
 void DMA2_Channel5_IRQHandler(void) __attribute__((weak, alias("default_handler")));
 
-__attribute__((section(".isr_vector")))
+__attribute__((section(".isr_vector"), used))
 void (*const g_pfnVectors[])(void) = 
 {
 	_estack,
