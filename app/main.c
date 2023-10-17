@@ -3,19 +3,12 @@
 #include <stm32f10x_usart.h>
 #include <stm32f10x_rcc.h>
 
-int i = 0;
-int off = 5;
 #define UNUSED(x)		(void)(x)
 
 void assert_failed(uint8_t* file, uint32_t line)
 {
 	UNUSED(file);
 	UNUSED(line);
-}
-
-void inc(void)
-{
-	i += off;
 }
 
 void _mydelay(uint32_t nCycles)
@@ -41,37 +34,55 @@ void _send_string(USART_TypeDef* pPort, char* szStr)
 	}
 }
 
-int main(void) __attribute__((section(".txt2")));
-
-int main(void)
+void init_hw()
 {
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+	//// Enable GPIO C13.
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE); // for LED.
 
 	GPIO_InitTypeDef stGpioInit;
 	stGpioInit.GPIO_Pin = GPIO_Pin_13;
 	stGpioInit.GPIO_Speed = GPIO_Speed_2MHz;
 	stGpioInit.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_Init(GPIOC, &stGpioInit);
-	GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_SET);
+
+	//// Enable GPIO A9, A10 for UART1.
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+	stGpioInit.GPIO_Pin = GPIO_Pin_9;
+	stGpioInit.GPIO_Mode = GPIO_Mode_AF_PP;
+	stGpioInit.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_Init(GPIOA, &stGpioInit);
+
+	stGpioInit.GPIO_Pin = GPIO_Pin_10;
+	stGpioInit.GPIO_Mode = GPIO_Mode_AIN;
+	GPIO_Init(GPIOA, &stGpioInit);
+
+	//// Enable UART1.
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 
 	USART_InitTypeDef stInitUart;
+	USART_StructInit(&stInitUart);
 	stInitUart.USART_BaudRate = 115200;
-	stInitUart.USART_WordLength = USART_WordLength_8b;
-	stInitUart.USART_StopBits = USART_StopBits_1;
-	stInitUart.USART_Parity = USART_Parity_No;
-	stInitUart.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	stInitUart.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_Init(USART1, &stInitUart);
+
+	USART_Cmd(USART1, ENABLE);
+	GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_SET);
+
+}
+
+int main(void)
+{
+	init_hw();
 
 	for(;;)//int i=0; i< 10000; i++)
 	{
 		GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_RESET);
-//		_send_string(USART1, "Line 1\n");
-		_mydelay(10000);
+		_send_string(USART1, "Line 1\n");
+		_mydelay(1000000);
 
 		GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_SET);
-//		_send_string(USART1, "Line 2\n");
-		_mydelay(10000);
+		_send_string(USART1, "Line 2\n");
+		_mydelay(1000000);
 	}
 	while(1);
 }

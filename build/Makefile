@@ -1,43 +1,17 @@
-
-################ Top configuration.
-PRJ_TOP = ..
-TARGET = templ
-OBJDIR = obj
-
-MCU = cortex-m3
-
-# LTO has some bug?? (section configuration.)
-EN_LTO = FALSE
-BUILD_STRICT = TRUE
-BUILD_PRINT = TRUE
+include proj.mk
 
 ifeq ($(BUILD_PRINT), TRUE)
 	ECHO = 
 else
 	ECHO = @
 endif
+MCU = cortex-m3
 
-VER_FILE = version.c
-################ source files ##############
-# Source file들은 project TOP 에서의 위치를 나타낸다.
-CSRC =	\
-		startup/startup_stm32f10x.c \
-		cmsis/system_stm32f10x.c \
-		app/main.c \
-		std_lib/stm32f10x_usart.c \
-		std_lib/stm32f10x_rcc.c \
-		std_lib/stm32f10x_gpio.c \
-		$(VER_FILE)
+################ Generated Files ##############
+VER_FILE = build/version.c
+GEN_LDS = $(TARGET).lds
 
-#		src/flash_spi.c \
-
-CPPSRC =
-
-ASRC =
-
-DATA =
-
-LINK_SCRIPT = startup/stm32f100.ld
+CSRC += $(VER_FILE)
 
 ################ Object ##############
 OBJ =	$(CSRC:%.c=$(OBJDIR)/%.c.o) \
@@ -46,39 +20,19 @@ OBJ =	$(CSRC:%.c=$(OBJDIR)/%.c.o) \
 		$(DATA:%.bin=$(OBJDIR)/%.b.o)
 
 LST =	$(OBJ:%.o=%.lst)
+
 DEP =	$(OBJ:%.o=%.d)
-
-################  Define
-DEFINE = 
-# STM32F103C8T6 <-- MD performance.
-DEFINE += -DSTM32F10X_MD
-DEFINE += -DUSE_STDPERIPH_DRIVER
-DEFINE += -DUSE_FULL_ASSERT
-DEFINE += -DHSE_VALUE=8000000
-################  Library directory.
-PRJ_LIB_DIR =
-
-EXT_LIB_DIR = 
-
-LIB_FILE =
 
 LIB_OPT =	$(patsubst %,-L$(PRJ_TOP)/%,$(PRJ_LIB_DIR)) \
 			$(patsubst %,-L%,$(EXT_LIB_DIR)) \
 			$(patsubst %,-l%,$(LIB_FILE))
 
-################  Include.
-# Add relative path from $(PRJ_TOP)
-PRJ_INC = \
-		cmsis \
-		std_lib
-
-# Add absolue path. (ex. c:/lib/inc)
-EXT_INC =
-
 INCLUDE =	$(patsubst %,-I$(PRJ_TOP)/%,$(PRJ_INC)) \
 			$(patsubst %,-I%,$(EXT_INC))
 
 ################  Common Options for C, C++, ASM
+DEP_FLAGS = -MMD -MP # dependancy generation.
+
 #  -g*:          generate debugging information
 #  -O*:          optimization level
 #  -f...:        tuning, see GCC manual and avr-libc documentation
@@ -87,16 +41,11 @@ INCLUDE =	$(patsubst %,-I$(PRJ_TOP)/%,$(PRJ_INC)) \
 #    -adhlns...: create assembler listing
 FLAGS  = -mcpu=$(MCU)
 #FLAGS += -mthumb
-FLAGS += -std=gnu99 # c89, c99, gnu89, gnu99
 FLAGS += -Wa,-adhlns=$(@:.o=.lst) # .o file assembly.
 FLAGS += -gdwarf-2 # debug format: dwarf-2
-FLAGS += -MMD -MP # dependancy generation.
 
 ## Optimize ##
-FLAGS += -O2
-ifeq ($(EN_LTO),TRUE)
-	FLAGS += -flto
-endif
+FLAGS += $(OPTI)
 
 ## compiler configuration ##
 FLAGS += -funsigned-char
@@ -110,7 +59,7 @@ FLAGS += -fdata-sections
 #FLAGS += -fno-unit-at-a-time
 #FLAGS += -mshort-calls
 FLAGS += --specs=nano.specs
-
+FLAGS += -mfloat-abi=soft
 ## WARNING ##
 FLAGS += -Wcomment # enable warning for cascade comment.
 FLAGS += -Wunreachable-code
@@ -123,15 +72,22 @@ endif
 
 ################  C Options
 CFLAGS  = $(FLAGS)
+CFLAGS += -std=gnu11 # c89, c99, gnu89, gnu99
+CFLAGS += -fstack-usage  # show stack usage for each function.
+CFLAGS += -fcallgraph-info  # make call graph information.
 CFLAGS += $(DEP_OPT)
 CFLAGS += $(DEFINE)
 CFLAGS += $(INCLUDE)
-CFLAGS += -fstack-usage  # show stack usage for each function.
-CFLAGS += -fcallgraph-info  # make call graph information.
 #CFLAGS += -fdump-tree-optimized #
 #CFLAGS += -fdump-rtl-dfinish  # 
 ################  C++ Options
 CPPFLAGS  = $(FLAGS)
+CPPFLAGS += -std=gnu++14
+CPPFLAGS += -fstack-usage  # show stack usage for each function.
+CPPFLAGS += -fcallgraph-info  # make call graph information.
+CPPFLAGS += -fno-exceptions
+CPPFLAGS += -fno-rtti
+CPPFLAGS += -fno-use-cxa-atexit
 CPPFLAGS += $(DEP_OPT)
 CPPFLAGS += $(DEFINE)
 CPPFLAGS += $(INCLUDE)
@@ -149,44 +105,43 @@ ASFLAGS  = $(FLAGS)
 ASFLAGS += $(DEP_OPT)
 ASFLAGS += $(DEFINE)
 ASFLAGS += $(INCLUDE)
+ASFLAGS += -x assembler-with-cpp 
 
 ################  Linker Options
 #  -Wl,...:     tell GCC to pass this to linker.
 #    -Map:      create map file
 #    --cref:    add cross reference to  map file
-LDS_OPT = $(patsubst %, -T $(PRJ_TOP)/%, $(LINK_SCRIPT))
+LDS_OPT = -T $(GEN_LDS)
+#LDS_OPT = $(patsubst %, -T $(PRJ_TOP)/%, $(LINK_SCRIPT))
 
 LDFLAGS = -g
 LDFLAGS += -mcpu=$(MCU)
-ifneq ($(EN_LTO),FALSE)
-	LDFLAGS += -flto
-endif
+LDFLAGS += $(OPTI)
 LDFLAGS += -Xlinker -Map=$(TARGET).map
 LDFLAGS += -Xlinker --cref
 #LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += $(LDS_OPT)
 LDFLAGS += --specs=nosys.specs
 LDFLAGS += -nostartfiles
+LDFLAGS += --specs=nano.specs
 #LDFLAGS += -nodefaultlibs
 #LDFLAGS += -nolibc
 #LDFLAGS += -nostdlib
 LDFLAGS += -Xlinker --gc-sections
 LDFLAGS += -Xlinker --print-memory-usage
-LDFLAGS += --specs=nano.specs
 #LDFLAGS += -mcmodel=medany
 #LDFLAGS += -msmall-data-limit=8
 LDFLAGS += -fmessage-length=0
+LDFLAGS += -mfloat-abi=soft
 
 ################### Action #################
-# add @ for silent.
-GNU_PRIFIX = arm-none-eabi-
-
-CC 		= $(GNU_PRIFIX)gcc
-OBJCOPY	= $(GNU_PRIFIX)objcopy
-OBJDUMP	= $(GNU_PRIFIX)objdump
-SIZE	= $(GNU_PRIFIX)size
-AR		= $(GNU_PRIFIX)ar rcs
-NM		= $(GNU_PRIFIX)nm
+CC 		= $(GNU_PREFIX)gcc
+CPP 	= $(GNU_PREFIX)g++
+OBJCOPY	= $(GNU_PREFIX)objcopy
+OBJDUMP	= $(GNU_PREFIX)objdump
+SIZE	= $(GNU_PREFIX)size
+AR		= $(GNU_PREFIX)ar rcs
+NM		= $(GNU_PREFIX)nm
 
 SHELL = sh
 REMOVE = rm -f
@@ -205,31 +160,36 @@ $(OBJDIR)/%.b.o : $(PRJ_TOP)/%.bin
 $(OBJDIR)/%.c.o : $(PRJ_TOP)/%.c
 	$(INFO)
 	$(DIR_CHK)
-	$(ECHO)$(CC) -c $(CFLAGS) $< -o $@ 
+	$(ECHO)$(CC) -c $(CFLAGS) $(DEP_FLAGS) $< -o $@ 
 
 $(OBJDIR)/%.p.o : $(PRJ_TOP)/%.cpp
 	$(INFO)
 	$(DIR_CHK)
-	$(ECHO)$(CC) -c $(CPPFLAGS) $< -o $@ 
+	$(ECHO)$(CPP) -c $(CPPFLAGS) $(DEP_FLAGS) $< -o $@ 
 
 $(OBJDIR)/%.s.o : $(PRJ_TOP)/%.S
 	$(INFO)
 	$(DIR_CHK)
-	$(ECHO)$(CC) -c $(ASFLAGS) $< -o $@
+	$(ECHO)$(CC) -c $(ASFLAGS) $(DEP_FLAGS) $< -o $@
 
 ################### File Creation #################
 all: elf bin lst hex size
 
 relink: clean_link all
 
-$(PRJ_TOP)/$(VER_FILE):
-	$(INFO)
-	@echo "char* gpVersion = \"$$(date +%Y%m%d_%H%M%S)\";" > $@
-
-%.elf: $(OBJ)
+$(GEN_LDS): $(PRJ_TOP)/$(LINK_SCRIPT)
 	$(INFO)
 	$(DIR_CHK)
-	$(ECHO)$(CC) $(LDFLAGS) $^ $(LIB_OPT) -o $@ 
+	$(ECHO)$(CC) -E -P -x c $(CFLAGS) $< > $@
+
+$(PRJ_TOP)/$(VER_FILE): Makefile
+	$(INFO)
+	@echo "char* gpVersion = \"$(VER_STRING)\";" > $(PRJ_TOP)/$(VER_FILE)
+
+%.elf: $(OBJ) $(GEN_LDS)
+	$(INFO)
+	$(DIR_CHK)
+	$(ECHO)$(CC) $(LDFLAGS) $(OBJ) $(LIB_OPT) -o $@ 
 
 %.hex: %.elf
 	$(INFO)
@@ -262,7 +222,7 @@ TARGET_ALL=	$(TARGET).elf $(TARGET).a \
 			$(TARGET).lss $(TARGET).sym $(TARGET).map
 
 version:
-	@echo "char* gpVersion = \"$$(date +%Y%m%d_%H%M%S)\";" > $(PRJ_TOP)/$(VER_FILE)
+	@echo "char* gpVersion = \"$(VER_STRING)\";" > $(PRJ_TOP)/$(VER_FILE)
 
 obj: $(OBJ)
 lib: $(TARGET).a
@@ -271,16 +231,17 @@ bin: $(TARGET).bin $(TARGET).hex
 lst: $(TARGET).lss $(TARGET).sym
 
 size: $(TARGET).elf
-	$(INFO)
+	$(INFO) $(OPTI)
 	@$(SIZE) --format=gnu $<
 	@$(SIZE) --format=gnu $< > $(TARGET).size
 	@$(SIZE) --format=sysv --radix=16 --common $< >> $(TARGET).size
 
-prog: $(TARGET).bin
-	stm32_isp.exe stm32_conf.ini
+prog: $(TARGET).hex
+	st-link_cli -P $(TARGET).hex -Rst
+#	stm32_isp.exe stm32_conf.ini
 
-run: $(TARGET).bin
-	stm32_isp.exe stm32_run.ini
+run:
+	st-link_cli -Rst
 
 # Display compiler version information.
 gccversion : 
@@ -293,7 +254,8 @@ clean_link:
 	$(REMOVE) $(TARGET).elf $(TARGET).a \
 			$(TARGET).hex $(TARGET).bin \
 			$(TARGET).lss $(TARGET).sym \
-			$(TARGET).map $(TARGET).size
+			$(TARGET).map $(TARGET).size \
+			$(TARGET).lds
 
 # Include the dependency files.
 -include $(patsubst %.c,$(OBJDIR)/%.c.d,$(CSRC))

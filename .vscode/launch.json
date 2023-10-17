@@ -1,0 +1,75 @@
+
+// Cortex Debug : 최신 버전에서 잘 됨.
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"cwd": "${workspaceRoot}",
+			"executable": "./build/templ.elf",
+			"name": "Debug with OpenOCD",
+			"request": "launch",
+			"type": "cortex-debug",
+			"servertype": "openocd",
+			"toolchainPath": "C:/Apps/gcc_arm/bin",
+			"serverpath": "C:/Apps/openocd/bin/openocd.exe",
+//			"searchDir": ["C:/Apps/openocd/openocd/scripts"],
+			"configFiles": [
+				"interface/stlink.cfg",
+				"target/stm32f1x.cfg",
+			],
+			"interface": "swd",
+			"device": "STM32F103",
+			"runToEntryPoint": "main",
+//			"showDevDebugOutput": "raw",
+			"showDevDebugOutput" :"none",
+			"postRestartCommands": [
+				"break main",
+				"continue"
+			],
+			"overrideLaunchCommands": [
+				"set mem inaccessible-by-default off",
+				"-enable-pretty-printing",
+
+				"load",
+				// to flash application by GDB/OpenOCD/NuLink
+//				"monitor flash write_image erase build/templ.bin 0x8000000",
+				"monitor flash verify_image build/templ.bin 0x8000000",
+				"monitor reset halt",
+			]
+		}
+	]
+}
+
+
+/*
+// Native Debug. : "No line 63 in file ... print.c" 메세지..
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "GDB",
+			"type": "gdb",
+			"request": "launch",
+			"cwd": "${workspaceRoot}",
+			"target": "./build/templ.elf",
+			"gdbpath" : "C:\\Apps\\gcc_arm\\bin\\arm-none-eabi-gdb.exe",
+			"autorun": [
+				"target remote localhost:3333",
+				"symbol-file ./build/templ.elf",
+				"monitor reset init",
+				"monitor sleep 100",
+				"monitor halt",
+				"monitor sleep 100",
+				"load",
+//				"break main",
+//				"break HAL_Init",
+//				"continue",
+				]
+		}
+	]
+}
+*/
+
