@@ -71,7 +71,9 @@ SECTIONS
 	. = ALIGN(4);
 	_etext = .;
 	/* This is used by the startup in order to initialize the .data secion*/
-	_sidata = _etext;
+	/*_sidata = _etext;*/
+	_sidata = LOADADDR(.data);
+
 
 	/* This is the initialized data section
 	The program executes knowing that the data is in the RAM
@@ -83,9 +85,8 @@ SECTIONS
 		/* This is used by the startup in order to initialize the .data secion */
 		_sdata = . ;
 
-/*		*(.data*) */
-		*(EXCLUDE_FILE(*stm32f10x_rcc.c.o).data*)
-		*stm32f10x_rcc.c.o(.data*)
+		*(.data*)
+/*		*(EXCLUDE_FILE(*stm32f10x_rcc.c.o).data*)*/
 		. = ALIGN(4);
 		/* This is used by the startup in order to initialize the .data secion */
 		_edata = . ;

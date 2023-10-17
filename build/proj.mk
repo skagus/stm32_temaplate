@@ -3,7 +3,7 @@
 PRJ_TOP = ..
 TARGET = templ
 OBJDIR = obj
-OPTI = -O3
+OPTI = -O1
 
 VER_STRING := $$(date +%Y%m%d_%H%M%S)_$(OPTI)
 
@@ -43,12 +43,12 @@ LIB_FILE =
 CSRC =	\
 		startup/startup_stm32f10x.c \
 		cmsis/system_stm32f10x.c \
-		app/main.c \
 		std_lib/stm32f10x_usart.c \
 		std_lib/stm32f10x_rcc.c \
-		std_lib/stm32f10x_gpio.c
-
-#		src/flash_spi.c \
+		std_lib/stm32f10x_gpio.c \
+		app/main.c \
+		app/console.c \
+		app/led.c
 
 CPPSRC =
 
