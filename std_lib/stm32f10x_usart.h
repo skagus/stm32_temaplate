@@ -241,7 +241,7 @@ typedef struct
 #define USART_IT_PE                          ((uint16_t)0x0028)
 #define USART_IT_TXE                         ((uint16_t)0x0727)
 #define USART_IT_TC                          ((uint16_t)0x0626)
-#define USART_IT_RXNE                        ((uint16_t)0x0525)
+#define USART_IT_RXNE                        ((uint16_t)0x0525) // 0b0000_0101,_001,0_0101
 #define USART_IT_ORE_RX                      ((uint16_t)0x0325) /* In case interrupt is generated if the RXNEIE bit is set */
 #define USART_IT_IDLE                        ((uint16_t)0x0424)
 #define USART_IT_LBD                         ((uint16_t)0x0846)

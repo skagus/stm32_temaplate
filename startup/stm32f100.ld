@@ -1,3 +1,7 @@
+/*INCLUDE debug_cm3.h
+*/
+#include "top_map.h"
+
 /*
 Linker script for STM32F10x_128K_8K
 
@@ -21,9 +25,9 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-	FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 64K
+	FLASH (rx) : ORIGIN = FLASH_BASE, LENGTH = FLASH_SIZE
 /*	FLASH2 (rx): ORIGIN = 0x08008000, LENGTH = 32K */
-	RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 8K
+	RAM (rwx)  : ORIGIN = SRAM_BASE, LENGTH = SRAM_SIZE
 /*	RAM2 (rx)  : ORIGIN = 0x20001000, LENGTH = 4K */
 }
 
@@ -177,3 +181,7 @@ SECTIONS
 	.debug_typenames 0 : { *(.debug_typenames) }
 	.debug_varnames  0 : { *(.debug_varnames) }
 }
+
+
+
+gSCS = 0xE000E000;

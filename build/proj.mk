@@ -46,6 +46,7 @@ CSRC =	\
 		std_lib/stm32f10x_usart.c \
 		std_lib/stm32f10x_rcc.c \
 		std_lib/stm32f10x_gpio.c \
+		std_lib/misc.c \
 		app/main.c \
 		app/console.c \
 		app/led.c

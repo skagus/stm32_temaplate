@@ -1,4 +1,7 @@
 #include <stdint.h>
+#include <stm32f10x.h>
+#include <core_cm3.h>
+#include <debug_cm3.h>
 #include "console.h"
 #include "led.h"
 
@@ -25,6 +28,8 @@ int main(void)
 	CON_Init();
 	LED_Init();
 
+	__enable_irq();
+
 	CON_Printf("\nVER: %s\n", gpVersion);
 
 	int nCnt = gnLoop;
@@ -32,11 +37,11 @@ int main(void)
 	{
 		LED_Set(1);
 		CON_Printf("On:  %4d\n", nCnt);
-		_mydelay(1000000);
+		_mydelay(10000000);
 
 		LED_Set(0);
 		CON_Printf("Off: %4d\n", nCnt);
-		_mydelay(1000000);
+		_mydelay(10000000);
 		nCnt++;
 	}
 	while(1);

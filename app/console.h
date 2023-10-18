@@ -1,4 +1,4 @@
-
+#pragma once
 
 void CON_Init();
 int CON_Printf(const char* szFmt, ...);

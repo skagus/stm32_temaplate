@@ -3,6 +3,19 @@
 #include <stm32f10x_usart.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <misc.h>
+int gnCntUartInt;
+
+void USART1_IRQHandler(void)
+{
+	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
+	{
+		uint16_t nRxData = USART_ReceiveData(USART1);
+		USART_SendData(USART1, (char)nRxData);
+		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+	}
+	gnCntUartInt++;
+}
 
 void CON_Init()
 {
@@ -16,7 +29,7 @@ void CON_Init()
 	GPIO_Init(GPIOA, &stGpioInit);
 
 	stGpioInit.GPIO_Pin = GPIO_Pin_10;
-	stGpioInit.GPIO_Mode = GPIO_Mode_AIN;
+	stGpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &stGpioInit);
 
 	//// Enable UART1.
@@ -27,7 +40,16 @@ void CON_Init()
 	stInitUart.USART_BaudRate = 115200;
 	USART_Init(USART1, &stInitUart);
 
-	USART_Cmd(USART1, ENABLE);	
+	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+
+	NVIC_InitTypeDef stCfgNVIC;
+	stCfgNVIC.NVIC_IRQChannel = USART1_IRQn;
+	stCfgNVIC.NVIC_IRQChannelSubPriority = 8;
+	stCfgNVIC.NVIC_IRQChannelPreemptionPriority = 8;
+	stCfgNVIC.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&stCfgNVIC);
+
+	USART_Cmd(USART1, ENABLE);
 }
 
 void _send_char(char nCh)
