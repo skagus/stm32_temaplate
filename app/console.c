@@ -4,7 +4,39 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <misc.h>
-int gnCntUartInt;
+
+#define MAX_BUF_SIZE		(128)
+
+static char gaTxBuf[MAX_BUF_SIZE];
+
+int CON_Puts(const char* szStr)
+{
+	while(*szStr)
+	{
+		while(RESET == USART_GetFlagStatus(USART1, USART_FLAG_TXE));
+		USART_SendData(USART1, *szStr);
+		szStr++;
+	}
+	return 0;
+}
+
+int CON_Printf(const char* szFmt, ...)
+{
+	va_list ap;
+	int len;
+
+	va_start(ap, szFmt);
+	len = vsprintf(gaTxBuf, szFmt, ap);
+	va_end(ap);
+
+	CON_Puts(gaTxBuf);
+	return len;
+}
+
+int CON_GetLine(char* pBuf, int nBufLen)
+{
+
+}
 
 void USART1_IRQHandler(void)
 {
@@ -14,7 +46,6 @@ void USART1_IRQHandler(void)
 		USART_SendData(USART1, (char)nRxData);
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
 	}
-	gnCntUartInt++;
 }
 
 void CON_Init()
@@ -32,7 +63,7 @@ void CON_Init()
 	stGpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &stGpioInit);
 
-	//// Enable UART1.
+	//// Setup UART1.
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 
 	USART_InitTypeDef stInitUart;
@@ -40,6 +71,7 @@ void CON_Init()
 	stInitUart.USART_BaudRate = 115200;
 	USART_Init(USART1, &stInitUart);
 
+	// setup UART Interrupt.
 	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
 
 	NVIC_InitTypeDef stCfgNVIC;
@@ -51,35 +83,3 @@ void CON_Init()
 
 	USART_Cmd(USART1, ENABLE);
 }
-
-void _send_char(char nCh)
-{
-	while(0 == (USART1->SR & (1<<7)));
-	USART_SendData(USART1, nCh);
-}
-
-int CON_Puts(const char* szStr)
-{
-	while(*szStr)
-	{
-		_send_char(*szStr);
-		szStr++;
-	}
-	return 0;
-}
-
-#define MAX_BUF_SIZE		(128)
-char gaConBuf[MAX_BUF_SIZE];
-int CON_Printf(const char* szFmt, ...)
-{
-	va_list ap;
-	int len;
-
-	va_start(ap, szFmt);
-	len = vsprintf(gaConBuf, szFmt, ap);
-	va_end(ap);
-
-	CON_Puts(gaConBuf);
-	return len;
-}
-
