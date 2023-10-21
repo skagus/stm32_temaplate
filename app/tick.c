@@ -2,29 +2,29 @@
 #include "core_cm3.h"
 #include "tick.h"
 
-volatile uint32_t gnTick;
-
 #define SYSCLK_FREQ 72000000
 
-uint32_t TICK_Get()
-{
-	return gnTick;
-}
+void _dummyCbf(){}
 
-void TICK_Init(uint32_t nPeriodMs)
+volatile uint32_t gnTick;
+Cbf gfTick = _dummyCbf;
+
+void TICK_Init(uint32_t nPeriodMs, Cbf cbfTick)
 {
-	gnTick = 0;
 	SysTick_Config(SYSCLK_FREQ / 1000 * nPeriodMs);
+	gfTick = cbfTick;
 }
 
 void TICK_Delay(uint32_t nTick)
 {
-	uint32_t nStartTick = gnTick;
-	while(gnTick < nStartTick + nTick);
+	gnTick = 0;
+	while(gnTick < nTick);
 }
+
 // SysTick exception handler.
 void SysTick_Handler(void)
 {
 	gnTick++;
+	gfTick();
 }
 

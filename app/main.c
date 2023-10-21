@@ -18,11 +18,17 @@ void assert_failed(uint8_t* file, uint32_t line)
 
 int gnLoop = 100;
 extern const char* gpVersion;
+int nCntTick = 100;
+void _TickCbf()
+{
+	nCntTick++;
+}
+
 int main(void)
 {
 	CON_Init();
 	LED_Init();
-	TICK_Init(MS_PER_TICK);
+	TICK_Init(MS_PER_TICK, _TickCbf);
 
 	__enable_irq();
 
@@ -32,7 +38,7 @@ int main(void)
 	for(;;)//int i=0; i< 10000; i++)
 	{
 		LED_Set(1);
-		CON_Printf("On:  %4d, %8d\n", nCnt, TICK_Get());
+		CON_Printf("On:  %4d, %8d\n", nCnt, nCntTick);
 		TICK_Delay(TICK_PER_MS(1000));
 
 		LED_Set(0);
