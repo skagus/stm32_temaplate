@@ -8,7 +8,11 @@
             "defines": [
                 "_DEBUG",
 				"__GNUC__",
-				"STM32F103x6"
+				"STM32F103x6",
+				"STM32F10X_MD",
+				"USE_STDPERIPH_DRIVER",
+				"USE_FULL_ASSERT"
+
             ],
             "windowsSdkVersion": "10.0.20348.0",
             "cStandard": "c17",

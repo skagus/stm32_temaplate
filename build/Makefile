@@ -204,7 +204,7 @@ $(PRJ_TOP)/$(VER_FILE): Makefile
 %.lss: %.elf
 	$(INFO)
 	$(DIR_CHK)
-	$(ECHO)$(OBJDUMP) -h -S -z $< > $@
+	$(ECHO)$(OBJDUMP) -h -S -z -w $< > $@
 
 %.sym: %.elf
 	$(INFO)
@@ -246,6 +246,15 @@ run:
 # Display compiler version information.
 gccversion : 
 	$(ECHO)$(CC) --version
+
+conf :
+	@echo PREFIX: $(GNU_PREFIX)
+	@echo CFLAGS: $(CFLAGS)
+	@echo LDFLAGS: $(LDFLAGS)
+	@echo ASM Files : $(ASMSRC)
+	@echo C Files : $(CSRC)
+	@echo C++ Files : $(CPPSRC)
+	@echo LD SCRIPT : $(LINK_SCRIPT)
 
 clean: clean_link
 	$(REMOVEDIR) $(OBJDIR)

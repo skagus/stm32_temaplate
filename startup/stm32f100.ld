@@ -88,9 +88,9 @@ SECTIONS
 		. = ALIGN(4);
 		/* This is used by the startup in order to initialize the .data secion */
 		_sdata = . ;
-
 		*(.data*)
 /*		*(EXCLUDE_FILE(*stm32f10x_rcc.c.o).data*)*/
+		KEEP(*(.dbg));
 		. = ALIGN(4);
 		/* This is used by the startup in order to initialize the .data secion */
 		_edata = . ;
@@ -181,7 +181,3 @@ SECTIONS
 	.debug_typenames 0 : { *(.debug_typenames) }
 	.debug_varnames  0 : { *(.debug_varnames) }
 }
-
-
-
-gSCS = 0xE000E000;
