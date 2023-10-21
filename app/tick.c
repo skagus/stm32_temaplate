@@ -1,10 +1,11 @@
+#include "types.h"
 #include "stm32f10x.h"
 #include "core_cm3.h"
 #include "tick.h"
 
 #define SYSCLK_FREQ 72000000
 
-void _dummyCbf(){}
+void _dummyCbf(uint32 tag, uint32 result){}
 
 volatile uint32_t gnTick;
 Cbf gfTick = _dummyCbf;
@@ -25,6 +26,6 @@ void TICK_Delay(uint32_t nTick)
 void SysTick_Handler(void)
 {
 	gnTick++;
-	gfTick();
+	gfTick(0, 0);
 }
 

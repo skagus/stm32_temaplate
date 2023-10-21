@@ -24,7 +24,9 @@ DEFINE += -DHSE_VALUE=8000000
 # Add relative path from $(PRJ_TOP)
 PRJ_INC = \
 		cmsis \
-		std_lib
+		std_lib \
+		app \
+		utils
 
 # Add absolue path. (ex. c:/lib/inc)
 EXT_INC =
@@ -48,6 +50,7 @@ CSRC =	\
 		std_lib/stm32f10x_rcc.c \
 		std_lib/stm32f10x_gpio.c \
 		std_lib/misc.c \
+		utils/sched.c \
 		app/main.c \
 		app/console.c \
 		app/led.c \

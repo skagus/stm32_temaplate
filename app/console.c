@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <misc.h>
+#include "sched_conf.h"
+#include "sched.h"
 
 #define MAX_BUF_SIZE		(128)
 
@@ -33,11 +35,6 @@ int CON_Printf(const char* szFmt, ...)
 	return len;
 }
 
-int CON_GetLine(char* pBuf, int nBufLen)
-{
-
-}
-
 void USART1_IRQHandler(void)
 {
 	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
@@ -47,6 +44,16 @@ void USART1_IRQHandler(void)
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
 	}
 }
+
+uint32 gnCnt;
+void con_Run(void* pParam)
+{
+	CON_Printf("On:  %4d\n", gnCnt);
+	gnCnt++;
+
+	Sched_Wait(0, SCHED_MSEC(1000));
+}
+
 
 void CON_Init()
 {
@@ -82,4 +89,8 @@ void CON_Init()
 	NVIC_Init(&stCfgNVIC);
 
 	USART_Cmd(USART1, ENABLE);
+
+
+
+	Sched_Register(TID_ECHO, con_Run, NULL, 0xFF);
 }
