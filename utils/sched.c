@@ -1,5 +1,7 @@
 #include "types.h"
 #include "macro.h"
+#include "stm32f10x.h"
+#include "core_cm3.h"
 #include "sched.h"
 #include "sched_conf.h"
 #define DBG_SCHEDULER		(0)
@@ -164,13 +166,13 @@ void Sched_Run()
 	Sched_SetMode(MODE_NORMAL);
 	while (1)
 	{
-		// disable interrupt.
+		__disable_irq();
 		Evts bmEvt = bmAsyncEvt;
 		bmAsyncEvt = 0;
 
 		uint32 nTick = nAsyncTick;
 		nAsyncTick = 0;
-		// enable interrupt.
+		__enable_irq();
 		bmEvt |= gSched.bmSyncEvt;
 		gSched.bmSyncEvt = 0;
 		TaskBtm bmRdy = gSched.bmRdyTask | sched_HandleEvt(bmEvt, nTick);

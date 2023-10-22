@@ -49,6 +49,7 @@ CSRC =	\
 		std_lib/stm32f10x_usart.c \
 		std_lib/stm32f10x_rcc.c \
 		std_lib/stm32f10x_gpio.c \
+		std_lib/stm32f10x_dma.c \
 		std_lib/misc.c \
 		utils/sched.c \
 		app/main.c \
