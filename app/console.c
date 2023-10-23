@@ -48,6 +48,7 @@ void DMA1_Channel5_IRQHandler(void)
 uint32 gbTxRun;
 void DMA1_Channel4_IRQHandler(void)
 {
+	//	while (1);
 	if (DMA_GetFlagStatus(DMA1_FLAG_TC4))
 	{
 		DMA_ClearFlag(DMA1_FLAG_TC4);
@@ -129,7 +130,7 @@ void _DMA_Tx_Config()
 	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
 
 	DMA_Init(DMA1_Channel4, &DMA_InitStructure);
-#if 0
+#if 1
 	DMA_ITConfig(DMA1_Channel4, DMA_IT_TC, ENABLE);
 
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -202,7 +203,7 @@ void _UART_DMA_Tx(uint8* pBuf, uint32 nLen)
 	while (RESET == USART_GetFlagStatus(USART1, USART_FLAG_TXE));
 	DMA_Cmd(DMA1_Channel4, DISABLE);
 
-	DMA1_Channel4->CPAR = (u32)(&(USART1->DR));
+	DMA1_Channel4->CPAR = (u32)(&(USART1->DR));  // Auto Cleared??
 	DMA1_Channel4->CMAR = pBuf;
 	DMA1_Channel4->CNDTR = nLen;
 
@@ -280,8 +281,8 @@ void CON_Init()
 	/* enable DMA clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
-	_DMA_Rx_Config();
 	_DMA_Tx_Config();
+	_DMA_Rx_Config();
 
 	USART_DMACmd(USART1, USART_DMAReq_Rx | USART_DMAReq_Tx, ENABLE);
 	USART_Cmd(USART1, ENABLE);
