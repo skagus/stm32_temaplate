@@ -9,37 +9,18 @@
 		{
 			"cwd": "${workspaceRoot}",
 			"executable": "./build/templ.elf",
-			"name": "Debug with OpenOCD",
+			"name": "Debug with PyOCD",
 			"request": "launch",
 			"type": "cortex-debug",
-			"servertype": "openocd",
-			"toolchainPath": "C:/Apps/gcc_arm/bin",
-			"serverpath": "C:/Apps/openocd/bin/openocd.exe",
-//			"searchDir": ["C:/Apps/openocd/openocd/scripts"],
-			"configFiles": [
-				"interface/stlink.cfg",
-				"target/stm32f1x.cfg",
-			],
-			"interface": "swd",
-			"device": "STM32F103",
 			"runToEntryPoint": "main",
-//			"showDevDebugOutput": "raw",
-			"showDevDebugOutput" :"none",
-			"postRestartCommands": [
-				"break main",
-				"continue"
+			"servertype": "pyocd",
+			"serverArgs": [
+				"--target", "stm32f103C8",
 			],
-			"overrideLaunchCommands": [
-				"set mem inaccessible-by-default off",
-				"-enable-pretty-printing",
-
-				"load",
-				// to flash application by GDB/OpenOCD/NuLink
-//				"monitor flash write_image erase build/templ.bin 0x8000000",
-				"monitor flash verify_image build/templ.bin 0x8000000",
-				"monitor reset halt",
-			]
-		}
+			"windows": {
+				"gdbPath": "C:/Apps/gcc_arm/bin/arm-none-eabi-gdb.exe"
+			}
+		},
 	]
 }
 

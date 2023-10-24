@@ -145,50 +145,38 @@ void _DMA_Rx_Config()
 {
 	DMA_InitTypeDef DMA_InitStructure;
 
-	/*
-		part2: UART DMA RX config
-	*/
-
-	/* DMA1 channel6 */
+	//	UART DMA RX config
 	DMA_DeInit(DMA1_Channel5);
-	/* peri. addr */
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)(&USART1->DR);
-	/* DMA dir */
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
-	/* DMA RX buffer */
 	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)gaRxBuf;
 	DMA_InitStructure.DMA_BufferSize = UART_RX_BUF_LEN;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
-
-	/* config DMA mode */
 	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-	/* DMA_Priority */
 	DMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;
-	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;  // NOT memory 2 memory.
 	DMA_Init(DMA1_Channel5, &DMA_InitStructure);
 	DMA_ITConfig(DMA1_Channel5, DMA_IT_HT | DMA_IT_TC, ENABLE);
 
+	// DMA IRQ enable
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel5_IRQn; /* UART2 DMA1Rx*/
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	DMA_Cmd(DMA1_Channel5, ENABLE);
-
-	/*
-		part3: UART interrupts
-	*/
+	// UART interrupts (ONLY Idle)
 	USART_ITConfig(USART1, USART_IT_TC, DISABLE);
 	USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
 	USART_ITConfig(USART1, USART_IT_IDLE, ENABLE);
 
+	// Trigger UART RX DMA.
+	DMA_Cmd(DMA1_Channel5, ENABLE);
 
 #if 0
 	NVIC_InitTypeDef NVIC_InitStructure;
-
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_3);
 	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
