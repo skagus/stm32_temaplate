@@ -4,7 +4,8 @@
 #include <stm32f10x_dma.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <misc.h>
+#include "misc.h"
+#include "types.h"
 #include "macro.h"
 #include "sched_conf.h"
 #include "sched.h"
@@ -12,20 +13,95 @@
 
 /**
  DMA 사용 전략.
-	1. TX
-		- Data는 TX buffer에 copy.
-		- 현재 어디까지 valid한지,
-		- 어디까지 DMA를 걸어놨는지.
-	2. RX
+	1. RX
 		- Buffer로 일단 RX 걸어 놓음 --> Half/Full ISR
-		- Idle이면 ISR call.
+		- Idle이면 ISR call --> RX Event trigger.
+	2. TX
+		- TX도 buffering이 필요함.
+		- buffering은 printf에서 마지막으로 실행.
+		- Buffer를 circular로 사용하도록.
+		- circular시에 문제점은 sprintf를 하기가 곤란하다는 점이 있다.
+		- 이를 좀 더 쉽게 풀기 위해서, 꼬리달린 circular 적용한다.
+		- +-----------------#---------@
+		- + ~ # 까지만 circular 로 운용하는데, sprintf 에서는 buffer 끝은 @ 까지 허용함.
+		- 하지만, 새로운 print 시점에서 current buffer위치가 #를 넘어가지는 않도록.
+		- print결과 #가 넘어간 경우에는, + 쪽으로 copy작업하여 circular 유지.
+		- 즉, circular로 사용하되, sprintf를 간단히 하기 위해서 꼬리를 허용하는 개념임.
 */
 
-#define UART_TX_BUF_LEN			(128)
-#define UART_RX_BUF_LEN			(64)
+#define UART_TX_BUF_LEN			(512)
+#define UART_TX_BUF_ADD			(64)
+#define UART_RX_BUF_LEN			(128)
 
-static uint8 gaTxBuf[UART_TX_BUF_LEN];
+volatile uint32 gbTxRun;
 static uint8 gaRxBuf[UART_RX_BUF_LEN];
+
+
+struct _TxBuf
+{
+	uint16 nFree; ///< Free data.
+	uint16 nValid; ///< DMA 대기 중인 data.
+	uint16 nOnDMA; ///< DMA 중인 data, 0이 되면서 nNextFree, nFree 증가
+	uint16 nNextAdd; ///< nFree를 감소.
+	uint16 nNextFree; ///< 
+	uint8 aBuf[UART_TX_BUF_LEN + UART_TX_BUF_ADD];
+} gstTxBuf;
+
+uint8* _GetNextAdd(struct _TxBuf* pTxBuf, uint32* pnMaxLen)
+{
+	uint32 nContLen = UART_TX_BUF_LEN + UART_TX_BUF_ADD - pTxBuf->nNextAdd;
+	*pnMaxLen = (pTxBuf->nFree < nContLen) ? pTxBuf->nFree : nContLen;
+	return pTxBuf->aBuf + pTxBuf->nNextAdd;
+}
+
+void _UpdateAdd(struct _TxBuf* pTxBuf, uint32 nLen)
+{
+	if (pTxBuf->nNextAdd + nLen > UART_TX_BUF_LEN)
+	{
+		uint32 nCpyLen = pTxBuf->nNextAdd + nLen - UART_TX_BUF_LEN;
+		memcpy(pTxBuf->aBuf, pTxBuf->aBuf + UART_TX_BUF_LEN, nCpyLen);
+	}
+	pTxBuf->nValid += nLen;
+	pTxBuf->nNextAdd = (pTxBuf->nNextAdd + nLen) % UART_TX_BUF_LEN;
+	pTxBuf->nFree -= nLen;
+}
+
+/**
+ * @return 남아 있는
+*/
+uint16 _DoneDMA(struct _TxBuf* pTxBuf)
+{
+	pTxBuf->nNextFree = (pTxBuf->nNextFree + pTxBuf->nOnDMA) % UART_TX_BUF_LEN;
+	pTxBuf->nFree += pTxBuf->nOnDMA;
+	pTxBuf->nValid -= pTxBuf->nOnDMA;
+	pTxBuf->nOnDMA = 0;
+	return pTxBuf->nValid;
+}
+
+uint8* _PopNextDMA(struct _TxBuf* pTxBuf, uint32* pnSize)
+{
+	uint8* pNxtDma = NULL;
+
+	if (pTxBuf->nValid > 0)
+	{
+		if (pTxBuf->nNextFree + pTxBuf->nValid < UART_TX_BUF_LEN) // normal case.
+		{
+			*pnSize = pTxBuf->nValid;
+			pNxtDma = pTxBuf->aBuf + pTxBuf->nNextFree;
+		}
+		else // roll over case.
+		{
+			*pnSize = UART_TX_BUF_LEN - pTxBuf->nNextFree;
+			pNxtDma = pTxBuf->aBuf + pTxBuf->nNextFree;
+		}
+	}
+	else
+	{
+		*pnSize = 0;
+	}
+	pTxBuf->nOnDMA = *pnSize;
+	return pNxtDma;
+}
 
 void DMA1_Channel5_IRQHandler(void)
 {
@@ -45,16 +121,17 @@ void DMA1_Channel5_IRQHandler(void)
 }
 
 
-uint32 gbTxRun;
 void DMA1_Channel4_IRQHandler(void)
 {
 	//	while (1);
 	if (DMA_GetFlagStatus(DMA1_FLAG_TC4))
 	{
 		DMA_ClearFlag(DMA1_FLAG_TC4);
+		_DoneDMA(&gstTxBuf);
 		gbTxRun = 0;
+		_UART_DMA_Tx();
 	}
-	//	Sched_TrigAsyncEvt(BIT(EVT_UART_RX));
+	Sched_TrigAsyncEvt(BIT(EVT_UART_TX));
 }
 
 void USART1_IRQHandler(void)
@@ -72,8 +149,9 @@ void USART1_IRQHandler(void)
 
 void _UART_Config()
 {
-	//// Enable GPIO A9, A10 for UART1.
+	//// Enable Clock for UART port and logic
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 
 	GPIO_InitTypeDef stGpioInit;
 	stGpioInit.GPIO_Pin = GPIO_Pin_9;
@@ -85,16 +163,10 @@ void _UART_Config()
 	stGpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &stGpioInit);
 
-	//// Setup UART1.
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-
 	USART_InitTypeDef stInitUart;
 	USART_StructInit(&stInitUart);
 	stInitUart.USART_BaudRate = 115200;
 	USART_Init(USART1, &stInitUart);
-
-	// setup UART Interrupt.
-	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
 
 	NVIC_InitTypeDef stCfgNVIC;
 	stCfgNVIC.NVIC_IRQChannel = USART1_IRQn;
@@ -108,37 +180,25 @@ void _DMA_Tx_Config()
 {
 	DMA_InitTypeDef DMA_InitStructure;
 
-	/* config DMA src */
+	/* Config DMA basic */
 	DMA_InitStructure.DMA_PeripheralBaseAddr = 0; // (u32)(&(USART1->DR));
-
-	/* config Buffer */
 	DMA_InitStructure.DMA_MemoryBaseAddr = 0;
 	DMA_InitStructure.DMA_BufferSize = 0;
-
-	/* config direction */
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
-
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
-	/* DMA mode */
 	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-	/* DMA_Priority */
 	DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
-	/* DMA_M2M disable */
 	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
-
 	DMA_Init(DMA1_Channel4, &DMA_InitStructure);
-#if 1
 	DMA_ITConfig(DMA1_Channel4, DMA_IT_TC, ENABLE);
 
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel4_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-#endif
-
 }
 
 void _DMA_Rx_Config()
@@ -146,7 +206,6 @@ void _DMA_Rx_Config()
 	DMA_InitTypeDef DMA_InitStructure;
 
 	//	UART DMA RX config
-	DMA_DeInit(DMA1_Channel5);
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)(&USART1->DR);
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
 	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)gaRxBuf;
@@ -167,11 +226,6 @@ void _DMA_Rx_Config()
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	// UART interrupts (ONLY Idle)
-	USART_ITConfig(USART1, USART_IT_TC, DISABLE);
-	USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
-	USART_ITConfig(USART1, USART_IT_IDLE, ENABLE);
-
 	// Trigger UART RX DMA.
 	DMA_Cmd(DMA1_Channel5, ENABLE);
 
@@ -186,44 +240,52 @@ void _DMA_Rx_Config()
 #endif
 }
 
-void _UART_DMA_Tx(uint8* pBuf, uint32 nLen)
+void _UART_DMA_Tx()
 {
-	while (RESET == USART_GetFlagStatus(USART1, USART_FLAG_TXE));
-	DMA_Cmd(DMA1_Channel4, DISABLE);
+	if (0 == gbTxRun)
+	{
+		// while (RESET == USART_GetFlagStatus(USART1, USART_FLAG_TXE));
+		DMA_Cmd(DMA1_Channel4, DISABLE);
 
-	DMA1_Channel4->CPAR = (u32)(&(USART1->DR));  // Auto Cleared??
-	DMA1_Channel4->CMAR = pBuf;
-	DMA1_Channel4->CNDTR = nLen;
+		uint32 nLen;
+		uint8* pBuf = _PopNextDMA(&gstTxBuf, &nLen);
+		if (nLen > 0)
+		{
+			DMA1_Channel4->CPAR = (u32)(&(USART1->DR));  // Auto Cleared??
+			DMA1_Channel4->CMAR = pBuf;
+			DMA1_Channel4->CNDTR = nLen;
 
-	DMA_Cmd(DMA1_Channel4, ENABLE);
-
-	gbTxRun = 1;
+			gbTxRun = 1;
+			DMA_Cmd(DMA1_Channel4, ENABLE);
+		}
+	}
 }
 
 //////////////////////////////////////////////////
 
-int CON_Puts(const char* szStr)
-{
-	while (*szStr)
-	{
-		while (RESET == USART_GetFlagStatus(USART1, USART_FLAG_TXE));
-		USART_SendData(USART1, *szStr);
-		szStr++;
-	}
-	return 0;
-}
-
 int CON_Printf(const char* szFmt, ...)
 {
-	va_list ap;
-	int len;
+	uint32 nBufLen;
+	uint8* pBuf = _GetNextAdd(&gstTxBuf, &nBufLen);
 
-	va_start(ap, szFmt);
-	len = vsprintf(gaTxBuf, szFmt, ap);
-	va_end(ap);
+	va_list stVA;
+	int nLen;
 
-	CON_Puts(gaTxBuf);
-	return len;
+	va_start(stVA, szFmt);
+	nLen = vsnprintf(pBuf, nBufLen, szFmt, stVA);
+	va_end(stVA);
+
+	__disable_irq();
+	_UpdateAdd(&gstTxBuf, nLen);
+	_UART_DMA_Tx();
+	__enable_irq();
+
+	return nLen;
+}
+
+int CON_Puts(const char* szStr)
+{
+	return CON_Printf(szStr);
 }
 
 uint32 UART_GetData(uint8* pBuf)
@@ -252,19 +314,21 @@ void con_Run(void* pParam)
 	if (nBytes > 0)
 	{
 		aBuf[nBytes] = 0;
-		CON_Printf("Cnt: %d, Rcv: %s\n", nBytes, aBuf);
+		CON_Printf("%s", aBuf);
 	}
 
 	Sched_Wait(BIT(EVT_UART_RX), SCHED_MSEC(10000));
-
-	uint8* pString = "TestString\n";
-	_UART_DMA_Tx(pString, 11);
 }
 
 
 void CON_Init()
 {
 	_UART_Config();
+
+	// for UART DMA, TC, RXNE is not used.
+	//	USART_ITConfig(USART1, USART_IT_TC, DISABLE);
+	//	USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
+	USART_ITConfig(USART1, USART_IT_IDLE, ENABLE);
 
 	/* enable DMA clock */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
@@ -276,4 +340,5 @@ void CON_Init()
 	USART_Cmd(USART1, ENABLE);
 
 	Sched_Register(TID_ECHO, con_Run, NULL, 0xFF);
+	gstTxBuf.nFree = UART_TX_BUF_LEN;
 }

@@ -7,6 +7,7 @@
 typedef enum
 {
 	EVT_UART_RX,
+	EVT_UART_TX,
 	EVT_ECHO,
 	NUM_EVT
 } evt_id;
