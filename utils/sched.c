@@ -11,7 +11,7 @@ typedef struct
 	Entry	pfTask;
 	uint32	nTimeOut;
 	Evts	bmWaitEvt;         // Events to wait...
-	void*	pParam;
+	void* pParam;
 #if (DBG_SCHEDULER)
 	uint32	nCntRun;
 #endif
@@ -82,9 +82,9 @@ static TaskBtm sched_HandleEvt(Evts bmEvt, uint32 nTick)
 */
 void Sched_TrigAsyncEvt(Evts bmEvt)
 {
-//	while (gnIntEnable.test_and_set());
+	//	while (gnIntEnable.test_and_set());
 	bmAsyncEvt |= bmEvt;
-//	gnIntEnable.clear();
+	//	gnIntEnable.clear();
 }
 
 /**
@@ -145,7 +145,7 @@ Cbf Sched_Init()
 {
 	gSched.nCurTask = 0;
 	gSched.geRunMode = MODE_NORMAL;
-//	gnIntEnable.clear();
+	//	gnIntEnable.clear();
 
 	gSched.bmSyncEvt = 0;
 	bmAsyncEvt = 0;
@@ -153,8 +153,8 @@ Cbf Sched_Init()
 	gSched.nCurTick = 0;
 	gSched.bmRdyTask = 0;
 
-//	TMR_Init();
-//	TMR_Add(0, SIM_MSEC(MS_PER_TICK), sched_TickISR, true);
+	//	TMR_Init();
+	//	TMR_Add(0, SIM_MSEC(MS_PER_TICK), sched_TickISR, true);
 	return sched_TickISR;
 }
 
@@ -186,7 +186,7 @@ void Sched_Run()
 					TaskInfo* pTask = gSched.astTask + gSched.nCurTask;
 					pTask->bmWaitEvt = 0;
 					pTask->pfTask(pTask->pParam);	// paramter is triggered event.
-//					CPU_TimePass(SIM_USEC(50));
+					//					CPU_TimePass(SIM_USEC(50));
 #if DBG_SCHEDULER
 					Evts bmEvt = pTask->bmWaitEvt;
 					pTask->nCntRun++;
@@ -194,20 +194,22 @@ void Sched_Run()
 #endif
 					bmRdy &= ~BIT(gSched.nCurTask);
 				}
-				gSched.nCurTask = (gSched.nCurTask == NUM_TASK-1) ? 0 : gSched.nCurTask + 1;
+				gSched.nCurTask = (gSched.nCurTask == NUM_TASK - 1) ? 0 : gSched.nCurTask + 1;
 			}
 			// Mode에 따라 실행되지 않은 task는 이후에 mode가 복귀했을 때 실행할 것.
 			gSched.bmRdyTask |= bmRdy;
 		}
 		else
 		{
-			/*
-			여기에서 interrupt를 기다리면 안됨 
-			왜냐하면, 앞에서 먼저 새로운 async가 떳을 수도 있음.
-			그리고 asyn 뜬거 확인하려면, interrupt disable하고 확인해야 함. 
-			결국, interrupt disable한 상태에서 WFI 를 해야 하는 상황.
+			/**
+			 * WFI works on IRQ disabled case.
 			*/
-			//__asm("wfi");
+			__disable_irq();
+			if (0 == bmAsyncEvt)
+			{
+				__asm("wfi");
+			}
+			__enable_irq();
 		}
 	}
 }

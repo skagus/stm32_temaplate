@@ -317,7 +317,7 @@ void con_Run(void* pParam)
 		CON_Printf("%s", aBuf);
 	}
 
-	Sched_Wait(BIT(EVT_UART_RX), SCHED_MSEC(10000));
+	Sched_Wait(BIT(EVT_UART_RX), SCHED_MSEC(5000));
 }
 
 
