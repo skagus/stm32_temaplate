@@ -5,21 +5,22 @@
 
 #define SYSCLK_FREQ 72000000
 
-void _dummyCbf(uint32 tag, uint32 result){}
+void _dummyCbf(uint32 tag, uint32 result) {}
 
 volatile uint32_t gnTick;
 Cbf gfTick = _dummyCbf;
 
 void TICK_Init(uint32_t nPeriodMs, Cbf cbfTick)
 {
-	SysTick_Config(SYSCLK_FREQ / 1000 * nPeriodMs);
+	// stm32f103, feeds HCLK / 8 as external system timer clock. 
+	SysTick_Config(SYSCLK_FREQ / (8 * 1000) * nPeriodMs);
 	gfTick = cbfTick;
 }
 
 void TICK_Delay(uint32_t nTick)
 {
 	gnTick = 0;
-	while(gnTick < nTick);
+	while (gnTick < nTick);
 }
 
 // SysTick exception handler.
