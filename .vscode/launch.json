@@ -12,7 +12,7 @@
 			"name": "Debug with PyOCD",
 			"request": "launch",
 			"type": "cortex-debug",
-			"runToEntryPoint": "main",
+			"runToEntryPoint": "Reset_Handler",
 			"servertype": "pyocd",
 			"serverArgs": [
 				"--target", "stm32f103C8",

@@ -45,7 +45,8 @@ SECTIONS
 {
 	.text :
 	{
-		KEEP(*(.isr_vector))            /* Startup code */
+		. = ALIGN(4);
+		KEEP(*(.isr_vector)) /* Startup code */
 	/*	*(EXCLUDE_FILE(*main.c.o).text*) */
 		*(.text*)
 		*(.txt2*)
@@ -55,24 +56,55 @@ SECTIONS
 		*(.glue_7t)
 		*(.vfp11_veneer)
 		*(.v4_bx)
-		*(.ARM.extab* .gnu.linkonce.armextab.*)
 	} >FLASH
 
 	/* for exception handling/unwind - some Newlib functions (in
 	common with C++ and STDC++) use this. */
 	.ARM.extab :
 	{
+		. = ALIGN(4);
 		*(.ARM.extab* .gnu.linkonce.armextab.*)
+		. = ALIGN(4);
 	} > FLASH
 
-	__exidx_start = .;
-	.ARM.exidx :
+	.ARM :
 	{
-		*(.ARM.exidx* .gnu.linkonce.armexidx.*)
+		. = ALIGN(4);
+		__exidx_start = .;
+		*(.ARM.exidx*)
+		__exidx_end = .;
+		. = ALIGN(4);
 	} > FLASH
-	__exidx_end = .;
 
-	. = ALIGN(4);
+	.preinit_array :
+	{
+		. = ALIGN(4);
+		PROVIDE_HIDDEN (__preinit_array_start = .);
+		KEEP (*(.preinit_array*))
+		PROVIDE_HIDDEN (__preinit_array_end = .);
+		. = ALIGN(4);
+	} >FLASH
+
+	.init_array :
+	{
+		. = ALIGN(4);
+		PROVIDE_HIDDEN (__init_array_start = .);
+		KEEP (*(SORT(.init_array.*)))
+		KEEP (*(.init_array*))
+		PROVIDE_HIDDEN (__init_array_end = .);
+		. = ALIGN(4);
+	} >FLASH
+
+	.fini_array :
+	{
+		. = ALIGN(4);
+		PROVIDE_HIDDEN (__fini_array_start = .);
+		KEEP (*(SORT(.fini_array.*)))
+		KEEP (*(.fini_array*))
+		PROVIDE_HIDDEN (__fini_array_end = .);
+		. = ALIGN(4);
+	} >FLASH
+
 	_etext = .;
 	/* This is used by the startup in order to initialize the .data secion*/
 	/*_sidata = _etext;*/

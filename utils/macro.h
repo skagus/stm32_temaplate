@@ -12,11 +12,15 @@
 //// 기본 macro 정의 ////
 
 #ifdef FALSE
-	#undef FALSE
-	#undef TRUE
+#undef FALSE
+#undef TRUE
 #endif
 
-extern void SIM_Print(const char* szFormat, ...);
+#if defined(__cplusplus)
+#define FORCE_C		extern "C"
+#else
+#define FORCE_C
+#endif
 
 #define NOT(x)						(!(x))
 #if defined(EN_SIM)

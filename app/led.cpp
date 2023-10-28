@@ -5,7 +5,7 @@
 
 void LED_Set(int bOn)
 {
-	if(bOn)
+	if (bOn)
 	{
 		GPIO_WriteBit(GPIOC, GPIO_Pin_13, Bit_SET);
 	}
@@ -18,7 +18,7 @@ void LED_Set(int bOn)
 uint32 gbIsOn;
 void led_Run(void* pParam)
 {
-	if(gbIsOn)
+	if (gbIsOn)
 	{
 		LED_Set(1);
 	}
@@ -27,7 +27,7 @@ void led_Run(void* pParam)
 		LED_Set(0);
 	}
 	gbIsOn = !gbIsOn;
-	Sched_Wait(0, SCHED_MSEC(100));
+	Sched_Wait(0, SCHED_MSEC(1000));
 }
 
 void LED_Init()

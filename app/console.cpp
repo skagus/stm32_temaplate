@@ -41,8 +41,7 @@ PrintBuf gstTxBuf;
 
 void _UART_DMA_Tx();
 
-
-void DMA1_Channel5_IRQHandler(void)
+FORCE_C void DMA1_Channel5_IRQHandler(void)
 {
 	if (DMA_GetFlagStatus(DMA1_FLAG_HT5))
 	{
@@ -60,20 +59,19 @@ void DMA1_Channel5_IRQHandler(void)
 }
 
 
-void DMA1_Channel4_IRQHandler(void)
+FORCE_C void DMA1_Channel4_IRQHandler(void)
 {
-	//	while (1);
 	if (DMA_GetFlagStatus(DMA1_FLAG_TC4))
 	{
 		DMA_ClearFlag(DMA1_FLAG_TC4);
-		PQ_UpdateDelPtr(&gstTxBuf);
+		gstTxBuf.PQ_UpdateDelPtr();
 		gbTxRun = 0;
 		_UART_DMA_Tx();
 	}
 	Sched_TrigAsyncEvt(BIT(EVT_UART_TX));
 }
 
-void USART1_IRQHandler(void)
+FORCE_C void USART1_IRQHandler(void)
 {
 	// 들어오다가, 멈추면 Interrupt발생.
 	if (USART_GetITStatus(CON_UART, USART_IT_IDLE) != RESET)
@@ -187,7 +185,7 @@ void _UART_DMA_Tx()
 		DMA_Cmd(CON_TX_DMA_CH, DISABLE);
 
 		uint32 nLen;
-		uint8* pBuf = PQ_GetDelPtr(&gstTxBuf, &nLen);
+		uint8* pBuf = gstTxBuf.PQ_GetDelPtr(&nLen);
 		if (nLen > 0)
 		{
 			CON_TX_DMA_CH->CPAR = (u32)(&(CON_UART->DR));  // Auto Cleared??
@@ -205,7 +203,7 @@ void _UART_DMA_Tx()
 int CON_Printf(const char* szFmt, ...)
 {
 	uint32 nBufLen;
-	uint8* pBuf = PQ_GetAddPtr(&gstTxBuf, &nBufLen);
+	uint8* pBuf = gstTxBuf.PQ_GetAddPtr(&nBufLen);
 
 	va_list stVA;
 	int nLen;
@@ -215,7 +213,7 @@ int CON_Printf(const char* szFmt, ...)
 	va_end(stVA);
 
 	__disable_irq();
-	PQ_UpdateAddPtr(&gstTxBuf, nLen);
+	gstTxBuf.PQ_UpdateAddPtr(nLen);
 	_UART_DMA_Tx();
 	__enable_irq();
 
@@ -279,5 +277,5 @@ void CON_Init()
 	USART_Cmd(CON_UART, ENABLE);
 
 	Sched_Register(TID_ECHO, con_Run, NULL, 0xFF);
-	gstTxBuf.nFree = UART_TX_BUF_LEN;
+	//	gstTxBuf.Init();
 }

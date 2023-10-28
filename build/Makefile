@@ -117,10 +117,11 @@ LDS_OPT = -T $(GEN_LDS)
 LDFLAGS = -g
 LDFLAGS += -mcpu=$(MCU)
 LDFLAGS += $(OPTI)
+LDFLAGS += $(LDS_OPT)
+LDFLAGS += $(LIB_OPT)
 LDFLAGS += -Xlinker -Map=$(TARGET).map
 LDFLAGS += -Xlinker --cref
 #LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS += $(LDS_OPT)
 LDFLAGS += --specs=nosys.specs
 LDFLAGS += -nostartfiles
 LDFLAGS += --specs=nano.specs
