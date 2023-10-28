@@ -200,6 +200,22 @@ void _UART_DMA_Tx()
 
 //////////////////////////////////////////////////
 
+int CON_Puts(const char* szStr)
+{
+	uint32 nBufLen;
+	uint8* pBuf = gstTxBuf.PQ_GetAddPtr(&nBufLen);
+	uint32 nStrLen = strlen(szStr);
+	uint32 nCpyLen = MIN(nStrLen, nBufLen);
+	memcpy(pBuf, szStr, nCpyLen);
+
+	__disable_irq();
+	gstTxBuf.PQ_UpdateAddPtr(nCpyLen);
+	_UART_DMA_Tx();
+	__enable_irq();
+
+	return nCpyLen;
+}
+
 int CON_Printf(const char* szFmt, ...)
 {
 	uint32 nBufLen;
@@ -220,18 +236,15 @@ int CON_Printf(const char* szFmt, ...)
 	return nLen;
 }
 
-int CON_Puts(const char* szStr)
-{
-	return CON_Printf(szStr);
-}
 
-uint32 UART_GetData(uint8* pBuf)
+
+uint32 UART_GetData(uint8* pBuf, uint32 nBufLen)
 {
 	static uint32 gnPrvIdx = 0;
 
 	uint32 nCurIdx = UART_RX_BUF_LEN - DMA_GetCurrDataCounter(CON_RX_DMA_CH);
 	uint32 nCnt = 0;
-	while (gnPrvIdx != nCurIdx)
+	while ((gnPrvIdx != nCurIdx) && (nCnt < nBufLen))
 	{
 		*pBuf = gaRxBuf[gnPrvIdx];
 		pBuf++;
@@ -247,7 +260,7 @@ Console Task.
 void con_Run(void* pParam)
 {
 	uint8 aBuf[128];
-	uint32 nBytes = UART_GetData(aBuf);
+	uint32 nBytes = UART_GetData(aBuf, 128);
 	if (nBytes > 0)
 	{
 		aBuf[nBytes] = 0;

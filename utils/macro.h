@@ -48,6 +48,9 @@
 #define MEMSET_ARRAY(arr, val)		memset((void*)(arr), val, sizeof(arr))
 #define MEMSET_PTR(ptr, val)		memset((void*)(ptr), val, sizeof(*ptr))
 
+#define MIN(x, y)					((x) > (y)) ? (y) : (x)
+#define MAX(x, y)					((x) > (y)) ? (x) : (y)
+
 #if (0)	// if branch prediction works well, the gab isn't big.
 #define likely(x)					__builtin_expect(!!(x), 1)
 #define unlikely(x)					__builtin_expect(!!(x), 0)

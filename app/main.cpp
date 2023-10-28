@@ -27,7 +27,9 @@ FORCE_C int main(void)
 	LED_Init();
 
 	__enable_irq();
-	CON_Printf("\nVER: %s\n", gpVersion);
+	CON_Puts("VER: ");
+	CON_Puts(gpVersion);
+	CON_Puts("\n");
 
 	Sched_Run();
 
