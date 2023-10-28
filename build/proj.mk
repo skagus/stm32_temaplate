@@ -52,6 +52,7 @@ CSRC =	\
 		std_lib/stm32f10x_dma.c \
 		std_lib/misc.c \
 		utils/sched.c \
+		utils/print_queue.c \
 		app/main.c \
 		app/console.c \
 		app/led.c \

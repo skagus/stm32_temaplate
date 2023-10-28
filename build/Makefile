@@ -184,7 +184,7 @@ $(GEN_LDS): $(PRJ_TOP)/$(LINK_SCRIPT)
 
 $(PRJ_TOP)/$(VER_FILE): Makefile
 	$(INFO)
-	@echo "char* gpVersion = \"$(VER_STRING)\";" > $(PRJ_TOP)/$(VER_FILE)
+	@echo "const char* gpVersion = \"$(VER_STRING)\";" > $(PRJ_TOP)/$(VER_FILE)
 
 %.elf: $(OBJ) $(GEN_LDS)
 	$(INFO)

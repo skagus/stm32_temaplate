@@ -18,5 +18,8 @@ typedef int8_t				int8;
 typedef uint64_t			uint64;
 typedef int64_t				int64;
 
+#if !defined(NULL)
 #define NULL				((void*)0)
+#endif
+
 typedef void (*Cbf)(uint32 tag, uint32 result);

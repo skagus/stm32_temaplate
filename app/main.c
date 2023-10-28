@@ -16,6 +16,12 @@ void assert_failed(uint8_t* file, uint32_t line)
 }
 
 extern const char* gpVersion;
+#ifdef __cpp__
+extern "C"
+{
+	int main(void);
+}
+#endif
 
 int main(void)
 {
