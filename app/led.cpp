@@ -27,7 +27,7 @@ void led_Run(void* pParam)
 		LED_Set(0);
 	}
 	gbIsOn = !gbIsOn;
-	Sched_Wait(0, SCHED_MSEC(1000));
+	Sched_Wait(0, SCHED_MSEC(500));
 }
 
 void LED_Init()
@@ -38,7 +38,7 @@ void LED_Init()
 	GPIO_InitTypeDef stGpioInit;
 	stGpioInit.GPIO_Pin = GPIO_Pin_13;
 	stGpioInit.GPIO_Speed = GPIO_Speed_2MHz;
-	stGpioInit.GPIO_Mode = GPIO_Mode_Out_OD;
+	stGpioInit.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOC, &stGpioInit);
 
 

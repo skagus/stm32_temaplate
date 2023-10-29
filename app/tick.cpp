@@ -2,9 +2,10 @@
 #include "macro.h"
 #include "stm32f10x.h"
 #include "core_cm3.h"
+#include "misc.h"
 #include "tick.h"
 
-#define SYSCLK_FREQ 72000000
+#define SYSCLK_FREQ			(72000000)
 
 void _dummyCbf(uint32 tag, uint32 result) {}
 
@@ -14,12 +15,9 @@ Cbf gfTick = _dummyCbf;
 void TICK_Init(uint32_t nPeriodMs, Cbf cbfTick)
 {
 	// stm32f103, feeds HCLK / 8 as external system timer clock. 
-#if 1
-	SysTick_Config(SYSCLK_FREQ / 1000 * nPeriodMs);
-#else
 	SysTick_Config(SYSCLK_FREQ / (8 * 1000) * nPeriodMs);
 	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
-#endif
+
 	gfTick = cbfTick;
 }
 
