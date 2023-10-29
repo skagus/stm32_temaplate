@@ -50,6 +50,7 @@ CSRC =	\
 		std_lib/stm32f10x_rcc.c \
 		std_lib/stm32f10x_gpio.c \
 		std_lib/stm32f10x_dma.c \
+		std_lib/stm32f10x_spi.c \
 		startup/startup_stm32f10x.c
 
 CPPSRC = \
@@ -58,7 +59,8 @@ CPPSRC = \
 		app/main.cpp \
 		app/console.cpp \
 		app/led.cpp \
-		app/tick.cpp
+		app/tick.cpp \
+		app/led_matrix.cpp
 
 ASRC =
 

@@ -7,6 +7,7 @@
 #include "tick.h"
 #include "console.h"
 #include "led.h"
+#include "led_matrix.h"
 
 #define UNUSED(x)			(void)(x)
 
@@ -25,6 +26,7 @@ FORCE_C int main(void)
 
 	CON_Init();
 	LED_Init();
+	LEDMat_Init();
 
 	__enable_irq();
 	CON_Puts("VER: ");

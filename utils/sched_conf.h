@@ -27,5 +27,6 @@ typedef enum
 {
 	TID_LED,
 	TID_ECHO,
+	TID_LED_MAT,
 	NUM_TASK,
 } TaskId;
