@@ -31,10 +31,7 @@ MEMORY
 /*	RAM2 (rx)  : ORIGIN = 0x20001000, LENGTH = 4K */
 }
 
-__ram_start__ = ORIGIN(RAM);
-__ram_size__  = LENGTH(RAM);
-__ram_end__   = __ram_start__ + __ram_size__;
-_estack = __ram_end__;
+_estack = ORIGIN(RAM) + LENGTH(RAM);
 /* highest address of the user mode stack */
 
 PROVIDE ( _Stack_Limit = _estack - _Minimum_Stack_Size );
@@ -46,10 +43,9 @@ SECTIONS
 	.text :
 	{
 		. = ALIGN(4);
-		KEEP(*(.isr_vector)) /* Startup code */
+		KEEP(*(.entry)) /* Startup code */
 	/*	*(EXCLUDE_FILE(*main.c.o).text*) */
 		*(.text*)
-		*(.txt2*)
 		*(.rodata)                 /* read-only data (constants) */
 		*(.rodata.*)
 		*(.glue_7)
@@ -105,11 +101,8 @@ SECTIONS
 		. = ALIGN(4);
 	} >FLASH
 
-	_etext = .;
 	/* This is used by the startup in order to initialize the .data secion*/
-	/*_sidata = _etext;*/
 	_sidata = LOADADDR(.data);
-
 
 	/* This is the initialized data section
 	The program executes knowing that the data is in the RAM
@@ -140,32 +133,32 @@ SECTIONS
 		. = ALIGN(4);
 		/* This is used by the startup in order to initialize the .bss secion */
 		_sbss = .;
-		__bss_start__ = _sbss;
 		*(.bss)
 		*(.bss.*)
 		*(COMMON)
-
 		. = ALIGN(4);
 		/* This is used by the startup in order to initialize the .bss section */
 		_ebss = . ;
-		__bss_end__ = _ebss;
 	} >RAM
 
+	.noinit(NOLOAD) :
+	{
+		. = ALIGN(4);
+		KEEP(*(.noinit))
+		. = ALIGN(4);
+	} >RAM
+
+	/* _sbrk needs 'end' */
 	PROVIDE ( end = _ebss );
-	PROVIDE ( _end = _ebss );
-	PROVIDE ( _exit = _ebss );
-	PROVIDE (_stackend = ORIGIN(RAM) + LENGTH(RAM) - _Minimum_Stack_Size);
 
 	/* This is the user stack section
 	This is just to check that there is enough RAM left for the User mode stack
 	It should generate an error if it's full. */
-	._usrstack :
+	.stack :
 	{
 		. = ALIGN(4);
-		_susrstack = . ;
 		. = . + _Minimum_Stack_Size ;
 		. = ALIGN(4);
-		_eusrstack = . ;
 	} >RAM
 
 	/* after that it's only debugging information. */

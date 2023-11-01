@@ -118,9 +118,9 @@ void _DMA_Tx_Config()
 	DMA_InitTypeDef DMA_InitStructure;
 
 	/* Config DMA basic */
-	DMA_InitStructure.DMA_PeripheralBaseAddr = 0; // (u32)(&(CON_UART->DR));
-	DMA_InitStructure.DMA_MemoryBaseAddr = 0;
-	DMA_InitStructure.DMA_BufferSize = 0;
+	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32)(&(CON_UART->DR));
+	DMA_InitStructure.DMA_MemoryBaseAddr = 1;
+	DMA_InitStructure.DMA_BufferSize = 1;
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;

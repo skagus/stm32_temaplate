@@ -15,6 +15,14 @@ void assert_failed(uint8_t* file, uint32_t line)
 {
 	UNUSED(file);
 	UNUSED(line);
+	if (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
+	{
+		__asm("bkpt 0");
+	}
+	else
+	{
+		// Core dump.
+	}
 }
 
 extern const char* gpVersion;

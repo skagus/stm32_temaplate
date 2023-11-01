@@ -137,7 +137,7 @@ void DMA2_Channel3_IRQHandler(void) __attribute__((weak, alias("default_handler"
 void DMA2_Channel4_5_IRQHandler(void) __attribute__((weak, alias("default_handler")));
 void DMA2_Channel5_IRQHandler(void) __attribute__((weak, alias("default_handler")));
 
-__attribute__((section(".isr_vector"), used))
+__attribute__((section(".entry"), used, aligned(128)))
 void (* const g_pfnVectors[])(void) =
 {
 	_estack,

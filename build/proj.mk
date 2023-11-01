@@ -51,7 +51,8 @@ CSRC =	\
 		std_lib/stm32f10x_gpio.c \
 		std_lib/stm32f10x_dma.c \
 		std_lib/stm32f10x_spi.c \
-		startup/startup_stm32f10x.c
+		startup/startup_stm32f10x.c \
+		startup/fault.c
 
 CPPSRC = \
 		utils/sched.cpp \
