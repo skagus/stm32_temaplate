@@ -26,7 +26,8 @@ PRJ_INC = \
 		cmsis \
 		std_lib \
 		app \
-		utils
+		utils \
+		startup
 
 # Add absolue path. (ex. c:/lib/inc)
 EXT_INC =
@@ -51,8 +52,7 @@ CSRC =	\
 		std_lib/stm32f10x_gpio.c \
 		std_lib/stm32f10x_dma.c \
 		std_lib/stm32f10x_spi.c \
-		startup/startup_stm32f10x.c \
-		startup/fault.c
+		startup/startup_stm32f10x.c
 
 CPPSRC = \
 		utils/sched.cpp \

@@ -27,7 +27,7 @@ void led_Run(void* pParam)
 		LED_Set(0);
 	}
 	gbIsOn = !gbIsOn;
-	Sched_Wait(0, SCHED_MSEC(500));
+	Sched_Wait(0, SCHED_MSEC(100));
 }
 
 void LED_Init()

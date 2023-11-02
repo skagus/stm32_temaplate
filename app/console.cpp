@@ -236,6 +236,14 @@ int CON_Printf(const char* szFmt, ...)
 	return nLen;
 }
 
+void CON_Flush()
+{
+	uint32 nAvail;
+	do
+	{
+		gstTxBuf.PQ_GetAddPtr(&nAvail);
+	} while (nAvail < 128);
+}
 
 
 uint32 UART_GetData(uint8* pBuf, uint32 nBufLen)
@@ -265,6 +273,15 @@ void con_Run(void* pParam)
 	{
 		aBuf[nBytes] = 0;
 		CON_Printf("%s", aBuf);
+		for (uint32 nCnt = 0; nCnt < 1024; nCnt++)
+		{
+			if (0 == nCnt % 8)
+			{
+				CON_Printf("\n");
+				CON_Flush();
+			}
+			CON_Printf("%8d ", nCnt);
+		}
 	}
 
 	Sched_Wait(BIT(EVT_UART_RX), SCHED_MSEC(5000));

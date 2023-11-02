@@ -2,7 +2,7 @@
 #include "types.h"
 
 #define UART_TX_BUF_LEN			(512)
-#define UART_TX_BUF_ADD			(64)
+#define UART_TX_BUF_ADD			(128)
 
 class PrintBuf
 {
