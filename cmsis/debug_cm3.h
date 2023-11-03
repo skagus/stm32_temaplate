@@ -9,3 +9,12 @@ extern SysTick_Type* gSysTick;
 extern NVIC_Type* gNVIC;
 extern ITM_Type* gITM;
 extern CoreDebug_Type* gCoreDebug;
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+	void DBG_TriggerNMI();
+#if defined(__cplusplus)
+}
+#endif

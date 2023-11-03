@@ -1,9 +1,10 @@
+#include <stdarg.h>
+#include <stdio.h>
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #include <stm32f10x_usart.h>
 #include <stm32f10x_dma.h>
-#include <stdarg.h>
-#include <stdio.h>
+#include "debug_cm3.h"
 #include "config.h"
 #include "misc.h"
 #include "types.h"
@@ -271,6 +272,9 @@ void con_Run(void* pParam)
 	uint32 nBytes = UART_GetData(aBuf, 128);
 	if (nBytes > 0)
 	{
+#if 1
+		DBG_TriggerNMI();
+#else
 		aBuf[nBytes] = 0;
 		CON_Printf("%s", aBuf);
 		for (uint32 nCnt = 0; nCnt < 1024; nCnt++)
@@ -282,6 +286,7 @@ void con_Run(void* pParam)
 			}
 			CON_Printf("%8d ", nCnt);
 		}
+#endif
 	}
 
 	Sched_Wait(BIT(EVT_UART_RX), SCHED_MSEC(5000));

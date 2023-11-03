@@ -8,8 +8,8 @@
 	"configurations": [
 		{
 			"cwd": "${workspaceRoot}",
-			"executable": "./build/templ.elf",
-			"name": "Debug with PyOCD",
+			"executable": "./build/out/templ.elf",
+			"name": "DBG w/ PyOCD",
 			"request": "launch",
 			"type": "cortex-debug",
 			"runToEntryPoint": "Reset_Handler",
@@ -18,9 +18,26 @@
 				"--target", "stm32f103C8",
 			],
 			"windows": {
-				"gdbPath": "C:/Apps/gcc_arm/bin/arm-none-eabi-gdb.exe"
+				"gdbPath": "C:/Apps/gcc_arm/bin/arm-none-eabi-gdb.exe",
+				"svdFile": "./STM32F103.svd"
 			}
 		},
+		{
+			"cwd": "${workspaceRoot}",
+			"executable": "./build/out/templ.elf",
+			"name": "Attach w/ PyOCD",
+			"request": "attach",
+			"type": "cortex-debug",
+			"servertype": "pyocd",
+			"serverArgs": [
+				"--target", "stm32f103C8",
+			],
+			"windows": {
+				"gdbPath": "C:/Apps/gcc_arm/bin/arm-none-eabi-gdb.exe",
+				"svdFile": "./STM32F103.svd"
+			}
+		},
+
 	]
 }
 

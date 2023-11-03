@@ -1,8 +1,8 @@
 
 ################ Top configuration.
 PRJ_TOP = ..
-TARGET = templ
-OBJDIR = obj
+TARGET = out/templ
+OBJDIR = out
 OPTI = -O0
 
 VER_STRING := $$(date +%Y%m%d_%H%M%S)_$(OPTI)
