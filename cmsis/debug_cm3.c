@@ -6,7 +6,6 @@
 #include "macro.h"
 #include "top_map.h"
 #include "config.h"
-#include "console.h"
 #include <debug_cm3.h>
 
 #define AT(x)	__attribute__((section(#x)))

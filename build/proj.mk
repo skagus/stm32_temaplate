@@ -44,24 +44,25 @@ LIB_FILE =
 ################ source files ##############
 # Source file들은 project TOP 에서의 위치를 나타낸다.
 CSRC =	\
-		cmsis/system_stm32f10x.c \
-		cmsis/debug_cm3.c \
-		std_lib/misc.c \
 		std_lib/stm32f10x_usart.c \
 		std_lib/stm32f10x_rcc.c \
 		std_lib/stm32f10x_gpio.c \
 		std_lib/stm32f10x_dma.c \
 		std_lib/stm32f10x_spi.c \
-		startup/startup_stm32f10x.c
+		std_lib/misc.c \
+		startup/startup_stm32f10x.c \
+		cmsis/system_stm32f10x.c \
+		cmsis/debug_cm3.c
 
 CPPSRC = \
-		utils/sched.cpp \
-		utils/print_queue.cpp \
-		app/main.cpp \
+		app/con_uart.cpp \
 		app/console.cpp \
 		app/led.cpp \
 		app/tick.cpp \
-		app/led_matrix.cpp
+		app/led_matrix.cpp \
+		app/main.cpp \
+		utils/print_queue.cpp \
+		utils/sched.cpp
 
 ASRC =
 
