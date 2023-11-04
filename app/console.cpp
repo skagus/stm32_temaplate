@@ -10,6 +10,7 @@
 #include "types.h"
 #include "macro.h"
 #include "os.h"
+#include "led_matrix.h"
 #include "console.h"
 
 /**
@@ -107,22 +108,13 @@ void con_Run(void* pParam)
 		if (nBytes > 0)
 		{
 #if 1
-			DBG_TriggerNMI();
+			LEDMat_SendCh(aBuf[0]);
 #else
+			DBG_TriggerNMI();
+#endif
 			aBuf[nBytes] = 0;
 			CON_Printf("%s", aBuf);
-			for (uint32 nCnt = 0; nCnt < 1024; nCnt++)
-			{
-				if (0 == nCnt % 8)
-				{
-					CON_Printf("\n");
-					CON_Flush();
-				}
-				CON_Printf("%8d ", nCnt);
-			}
-#endif
 		}
-
 		OS_Wait(BIT(EVT_UART_RX), OS_MSEC(5000));
 	}
 }

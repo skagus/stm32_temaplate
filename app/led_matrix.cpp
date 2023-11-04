@@ -15,6 +15,9 @@
 
 #define EN_NSS_PIN						(0)	// Not working..
 
+extern uint8 gaFont8x8[128][8];
+uint8 gnDspCh;
+
 void SPI_Init4led()
 {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
@@ -124,42 +127,21 @@ void Matrix_Init()
 	SendTwo(TEST_DISPLAY_ADDR, TEST_DISPLAY_VAL);
 }
 
-void temp(uint32 nCnt)
-{
-	uint16 aDspOdd[] = { 0x0101, 0x0203, 0x0307, 0x040F, 0x051F, 0x063F, 0x077F, 0x08FF };
-	//	uint16 aDspEven[] = { 0x0155, 0x02AA, 0x0355, 0x04AA, 0x0555, 0x06AA, 0x0755, 0x08AA };
-	uint16 aDspEven[] = { 0x0801, 0x0703, 0x0607, 0x050F, 0x041F, 0x033F, 0x027F, 0x01FF };
-
-	if (nCnt & 0x1)
-	{
-		for (int i = 0; i < 8; i++)
-		{
-			SendU16(aDspOdd[i]);
-		}
-	}
-	else
-	{
-		for (int i = 0; i < 8; i++)
-		{
-			SendU16(aDspEven[i]);
-		}
-	}
-}
-
 void refreshMat(uint8* pFrame)
 {
 	for (int i = 0; i < 8; i++)
 	{
-		SendU16(((i + 1) << 8) | pFrame[i]);
+		SendU16(((8 - i) << 8) | pFrame[i]);
 	}
 }
 
 void ledmat_Run(void* pParam)
 {
-	uint32 nCnt = 0;
-	uint8 aDsp[8] = {};
+	uint8 nCnt = 0;
+	uint8* aDsp = gaFont8x8[0];
 	while (1)
 	{
+#if 0
 		uint16 nCntMod = nCnt % 64;
 		uint16 nCol = nCntMod % 8;
 		uint16 nRow = nCntMod / 8;
@@ -171,11 +153,24 @@ void ledmat_Run(void* pParam)
 		{
 			BIT_SET(aDsp[nCol], BIT(nRow));
 		}
-		refreshMat(aDsp);
-
 		nCnt++;
-		OS_Wait(0, OS_MSEC(10));
+#endif
+		refreshMat(aDsp);
+		SendTwo(INTENSITY_ADDR, nCnt / 2);
+
+		aDsp = gaFont8x8[gnDspCh];
+		OS_Wait(0, OS_MSEC(100));
+		nCnt++;
+		if (nCnt >= 8 * 2)
+		{
+			nCnt = 0;
+		}
 	}
+}
+
+void LEDMat_SendCh(char nCh)
+{
+	gnDspCh = nCh;
 }
 
 #define SIZE_STK	(128)

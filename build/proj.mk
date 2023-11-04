@@ -56,6 +56,7 @@ CSRC =	\
 		cmsis/debug_cm3.c
 
 CPPSRC = \
+		app/font.cpp \
 		app/con_uart.cpp \
 		app/console.cpp \
 		app/led.cpp \
