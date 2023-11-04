@@ -32,6 +32,7 @@
 #endif
 
 #define ASSERT(cond)				BRK_IF(NOT(cond), true)
+#define UNUSED(x)					(void)(x)
 
 #define IF_THEN(cond, check)		ASSERT(NOT(exp) || (check))
 #define DIV_CEIL(val, mod)			(((val) + (mod) - 1) / (mod))

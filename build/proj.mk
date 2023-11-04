@@ -51,6 +51,7 @@ CSRC =	\
 		std_lib/stm32f10x_spi.c \
 		std_lib/misc.c \
 		startup/startup_stm32f10x.c \
+		utils/os.c \
 		cmsis/system_stm32f10x.c \
 		cmsis/debug_cm3.c
 
@@ -61,8 +62,7 @@ CPPSRC = \
 		app/tick.cpp \
 		app/led_matrix.cpp \
 		app/main.cpp \
-		utils/print_queue.cpp \
-		utils/sched.cpp
+		utils/print_queue.cpp
 
 ASRC =
 

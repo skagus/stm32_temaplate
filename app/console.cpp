@@ -9,8 +9,7 @@
 #include "misc.h"
 #include "types.h"
 #include "macro.h"
-#include "sched_conf.h"
-#include "sched.h"
+#include "os.h"
 #include "console.h"
 
 /**
@@ -102,29 +101,34 @@ Console Task.
 void con_Run(void* pParam)
 {
 	uint8 aBuf[128];
-	uint32 nBytes = UART_GetData(aBuf, 128);
-	if (nBytes > 0)
+	while (1)
 	{
-#if 1
-		DBG_TriggerNMI();
-#else
-		aBuf[nBytes] = 0;
-		CON_Printf("%s", aBuf);
-		for (uint32 nCnt = 0; nCnt < 1024; nCnt++)
+		uint32 nBytes = UART_GetData(aBuf, 128);
+		if (nBytes > 0)
 		{
-			if (0 == nCnt % 8)
+#if 1
+			DBG_TriggerNMI();
+#else
+			aBuf[nBytes] = 0;
+			CON_Printf("%s", aBuf);
+			for (uint32 nCnt = 0; nCnt < 1024; nCnt++)
 			{
-				CON_Printf("\n");
-				CON_Flush();
+				if (0 == nCnt % 8)
+				{
+					CON_Printf("\n");
+					CON_Flush();
+				}
+				CON_Printf("%8d ", nCnt);
 			}
-			CON_Printf("%8d ", nCnt);
-		}
 #endif
-	}
+		}
 
-	Sched_Wait(BIT(EVT_UART_RX), SCHED_MSEC(5000));
+		OS_Wait(BIT(EVT_UART_RX), OS_MSEC(5000));
+	}
 }
 
+#define SIZE_STK	(128)
+static uint32 _aStk[SIZE_STK + 1];
 
 void CON_Init()
 {
@@ -143,6 +147,6 @@ void CON_Init()
 	USART_DMACmd(CON_UART, USART_DMAReq_Rx | USART_DMAReq_Tx, ENABLE);
 	USART_Cmd(CON_UART, ENABLE);
 
-	Sched_Register(TID_ECHO, con_Run, NULL, 0xFF);
+	OS_CreateTask(con_Run, _aStk + SIZE_STK, NULL, "Con");
 	//	gstTxBuf.Init();
 }

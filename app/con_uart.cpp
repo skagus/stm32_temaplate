@@ -4,8 +4,7 @@
 #include <stm32f10x_dma.h>
 #include "config.h"
 #include "misc.h"
-#include "sched_conf.h"
-#include "sched.h"
+#include "os.h"
 #include "console.h"
 
 
@@ -30,7 +29,7 @@ FORCE_C void DMA1_Channel5_IRQHandler(void)
 	{
 		DMA_ClearFlag(DMA1_FLAG_TC5);
 	}
-	Sched_TrigAsyncEvt(BIT(EVT_UART_RX));
+	OS_AsyncEvt(BIT(EVT_UART_RX));
 }
 
 
@@ -43,7 +42,7 @@ FORCE_C void DMA1_Channel4_IRQHandler(void)
 		gbTxRun = 0;
 		UART_DmaTx();
 	}
-	Sched_TrigAsyncEvt(BIT(EVT_UART_TX));
+	OS_AsyncEvt(BIT(EVT_UART_TX));
 }
 
 FORCE_C void USART1_IRQHandler(void)
@@ -55,7 +54,7 @@ FORCE_C void USART1_IRQHandler(void)
 		CON_UART->SR;
 		CON_UART->DR;  /* clear USART_IT_IDLE bit */
 
-		Sched_TrigAsyncEvt(BIT(EVT_UART_RX));
+		OS_AsyncEvt(BIT(EVT_UART_RX));
 	}
 }
 

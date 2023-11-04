@@ -3,7 +3,7 @@
 #include <core_cm3.h>
 #include <debug_cm3.h>
 #include "macro.h"
-#include "sched.h"
+#include "os.h"
 #include "tick.h"
 #include "console.h"
 #include "led.h"
@@ -29,7 +29,7 @@ extern const char* gpVersion;
 
 FORCE_C int main(void)
 {
-	Cbf pfTickCb = Sched_Init();
+	Cbf pfTickCb = OS_Init();
 	TICK_Init(MS_PER_TICK, pfTickCb);
 
 	CON_Init();
@@ -41,7 +41,7 @@ FORCE_C int main(void)
 	CON_Puts(gpVersion);
 	CON_Puts("\n");
 
-	Sched_Run();
+	OS_Start();
 
 	while (1);
 }

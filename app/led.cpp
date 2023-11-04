@@ -1,6 +1,7 @@
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
-#include "sched.h"
+#include "types.h"
+#include "os.h"
 
 
 void LED_Set(int bOn)
@@ -18,17 +19,23 @@ void LED_Set(int bOn)
 uint32 gbIsOn;
 void led_Run(void* pParam)
 {
-	if (gbIsOn)
+	while (1)
 	{
-		LED_Set(1);
+		if (gbIsOn)
+		{
+			LED_Set(1);
+		}
+		else
+		{
+			LED_Set(0);
+		}
+		gbIsOn = !gbIsOn;
+		OS_Wait(0, OS_MSEC(100));
 	}
-	else
-	{
-		LED_Set(0);
-	}
-	gbIsOn = !gbIsOn;
-	Sched_Wait(0, SCHED_MSEC(100));
 }
+
+#define SIZE_STK	(128)
+static uint32 _aStk[SIZE_STK + 1];
 
 void LED_Init()
 {
@@ -42,6 +49,6 @@ void LED_Init()
 	GPIO_Init(GPIOC, &stGpioInit);
 
 
-	Sched_Register(TID_LED, led_Run, NULL, 0xFF);
+	OS_CreateTask(led_Run, _aStk + SIZE_STK, NULL, "led");
 }
 

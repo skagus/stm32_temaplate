@@ -3,7 +3,7 @@
 #include <stm32f10x_gpio.h>
 #include "types.h"
 #include "macro.h"
-#include "sched.h"
+#include "os.h"
 #include "tick.h"
 #include "led.h"
 #include "led_matrix.h"
@@ -156,31 +156,36 @@ void refreshMat(uint8* pFrame)
 
 void ledmat_Run(void* pParam)
 {
-	static uint32 nCnt;
-
-	static uint8 aDsp[8] = {};
-	uint16 nCntMod = nCnt % 64;
-	uint16 nCol = nCntMod % 8;
-	uint16 nRow = nCntMod / 8;
-	if (aDsp[nCol] & BIT(nRow))
+	uint32 nCnt = 0;
+	uint8 aDsp[8] = {};
+	while (1)
 	{
-		BIT_CLR(aDsp[nCol], BIT(nRow));
-	}
-	else
-	{
-		BIT_SET(aDsp[nCol], BIT(nRow));
-	}
-	refreshMat(aDsp);
+		uint16 nCntMod = nCnt % 64;
+		uint16 nCol = nCntMod % 8;
+		uint16 nRow = nCntMod / 8;
+		if (aDsp[nCol] & BIT(nRow))
+		{
+			BIT_CLR(aDsp[nCol], BIT(nRow));
+		}
+		else
+		{
+			BIT_SET(aDsp[nCol], BIT(nRow));
+		}
+		refreshMat(aDsp);
 
-	nCnt++;
-	Sched_Wait(0, SCHED_MSEC(10));
+		nCnt++;
+		OS_Wait(0, OS_MSEC(10));
+	}
 }
+
+#define SIZE_STK	(128)
+static uint32 _aStk[SIZE_STK + 1];
 
 void LEDMat_Init()
 {
 	SPI_Init4led();
 	Matrix_Init();
 
-	Sched_Register(TID_LED_MAT, ledmat_Run, NULL, 0xFF);
+	OS_CreateTask(ledmat_Run, _aStk + SIZE_STK, NULL, "mat");
 }
 
