@@ -38,6 +38,7 @@ void UrgentUartInit()
 	USART_StructInit(&stInitUart);
 	stInitUart.USART_BaudRate = 115200;
 	USART_Init(CON_UART, &stInitUart);
+	USART_Cmd(CON_UART, ENABLE);
 }
 
 void UrgentPrint(char* szString)
