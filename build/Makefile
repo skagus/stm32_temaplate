@@ -143,6 +143,7 @@ OBJDUMP	= $(GNU_PREFIX)objdump
 SIZE	= $(GNU_PREFIX)size
 AR		= $(GNU_PREFIX)ar rcs
 NM		= $(GNU_PREFIX)nm
+GDB		= $(GNU_PREFIX)gdb
 
 SHELL = sh
 REMOVE = rm -f
@@ -195,7 +196,7 @@ $(PRJ_TOP)/$(VER_FILE): Makefile
 %.hex: %.elf
 	$(INFO)
 	$(DIR_CHK)
-	$(ECHO)$(OBJCOPY) -O ihex  $< $@
+	$(ECHO)$(OBJCOPY) -O ihex $< $@
 
 %.bin: %.elf
 	$(INFO)
@@ -244,18 +245,23 @@ prog: $(TARGET).hex
 run:
 	st-link_cli -Rst
 
+gdb: $(TARGET).elf
+	$(GDB) $<
 # Display compiler version information.
 gccversion : 
 	$(ECHO)$(CC) --version
 
 conf :
-	@echo PREFIX: $(GNU_PREFIX)
-	@echo CFLAGS: $(CFLAGS)
+	@echo PREFIX : $(GNU_PREFIX)
+	@echo ------------------------ Flags ------------------------
+	@echo CFLAGS : $(CFLAGS)
 	@echo LDFLAGS: $(LDFLAGS)
+	@echo ASFLAGS: $(ASFLAGS)
+	@echo LD FILE: $(LINK_SCRIPT)
+	@echo ------------------------ Files ------------------------
 	@echo ASM Files : $(ASMSRC)
-	@echo C Files : $(CSRC)
+	@echo C Files   : $(CSRC)
 	@echo C++ Files : $(CPPSRC)
-	@echo LD SCRIPT : $(LINK_SCRIPT)
 
 clean: clean_link
 	$(REMOVEDIR) $(OBJDIR)

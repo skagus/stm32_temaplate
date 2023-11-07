@@ -107,11 +107,7 @@ void con_Run(void* pParam)
 		uint32 nBytes = UART_GetData(aBuf, 128);
 		if (nBytes > 0)
 		{
-#if 1
 			LEDMat_SendCh(aBuf[0]);
-#else
-			DBG_TriggerNMI();
-#endif
 			aBuf[nBytes] = 0;
 			CON_Printf("%s", aBuf);
 		}

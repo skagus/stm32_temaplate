@@ -1,4 +1,6 @@
 #include <string.h>
+#include <stm32f10x.h>
+#include <core_cm3.h>
 #include "macro.h"
 #include "os.h"
 
@@ -66,10 +68,8 @@ void os_SetNextTask(void)
 			// simulation의 정확도 측면에선 차이가 없다.
 #if (EN_SIM)
 			CPU_Sleep();
-#elif defined(__arm__) 
-			__asm__ __volatile__("wfi");
-#elif defined(__riscv__)
-			__asm__ __volatile__("wfi");
+#else
+			__WFI();
 #endif
 			os_handleAsyncEvt();
 			bmRdy = gstOS._bmRdyTask;
