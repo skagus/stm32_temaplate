@@ -22,7 +22,7 @@ DEFINE += -DHSE_VALUE=8000000
 
 ################  Include.
 # Add relative path from $(PRJ_TOP)
-PRJ_INC = \
+PRJ_INC = . \
 		drv \
 		cmsis \
 		std_lib \

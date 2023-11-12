@@ -208,7 +208,7 @@ uint32 UART_GetData(uint8* pBuf, uint32 nBufLen)
 	return nCnt;
 }
 
-uint8* UART_GetWrteBuf(uint32* pnLen)
+uint8* UART_GetWriteBuf(uint32* pnLen)
 {
 	return gstTxBuf.PQ_GetAddPtr(pnLen);
 }

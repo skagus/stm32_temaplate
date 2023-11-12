@@ -54,7 +54,7 @@ int CLI_Puts(const char* szStr)
 int CLI_Printf(const char* szFmt, ...)
 {
 	uint32 nBufLen;
-	uint8* pBuf = UART_GetWrteBuf(&nBufLen);
+	uint8* pBuf = UART_GetWriteBuf(&nBufLen);
 
 	va_list stVA;
 	int nLen;
@@ -64,7 +64,6 @@ int CLI_Printf(const char* szFmt, ...)
 	va_end(stVA);
 
 	UART_PushWriteBuf(nLen);
-
 	return nLen;
 }
 

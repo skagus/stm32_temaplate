@@ -10,7 +10,7 @@ void UART_DmaConfig();
 void UART_Config();
 void UART_DmaTx();
 
-uint8* UART_GetWrteBuf(uint32* pLen);
+uint8* UART_GetWriteBuf(uint32* pLen);
 void UART_PushWriteBuf(uint32 nLen);
 
 uint32 UART_GetData(uint8* pBuf, uint32 nBufLen);

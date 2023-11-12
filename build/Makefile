@@ -8,10 +8,8 @@ endif
 MCU = cortex-m3
 
 ################ Generated Files ##############
-VER_FILE = build/version.c
+VER_FILE = version.h
 GEN_LDS = $(TARGET).lds
-
-CSRC += $(VER_FILE)
 
 ################ Object ##############
 OBJ =	$(CSRC:%.c=$(OBJDIR)/%.c.o) \
@@ -186,7 +184,7 @@ $(GEN_LDS): $(PRJ_TOP)/$(LINK_SCRIPT)
 
 $(PRJ_TOP)/$(VER_FILE): Makefile
 	$(INFO)
-	@echo "const char* gpVersion = \"$(VER_STRING)\";" > $(PRJ_TOP)/$(VER_FILE)
+	@echo "#define VERSION		\"$(VER_STRING)\" > $(PRJ_TOP)/$(VER_FILE)
 
 %.elf: $(OBJ) $(GEN_LDS)
 	$(INFO)
@@ -224,7 +222,7 @@ TARGET_ALL=	$(TARGET).elf $(TARGET).a \
 			$(TARGET).lss $(TARGET).sym $(TARGET).map
 
 version:
-	@echo "char* gpVersion = \"$(VER_STRING)\";" > $(PRJ_TOP)/$(VER_FILE)
+	@echo "#define VERSION		\"$(VER_STRING)\"" > $(PRJ_TOP)/$(VER_FILE)
 
 obj: $(OBJ)
 lib: $(TARGET).a

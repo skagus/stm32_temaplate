@@ -2,6 +2,7 @@
 #include <stm32f10x.h>
 #include <core_cm3.h>
 #include <debug_cm3.h>
+#include "version.h"
 #include "macro.h"
 #include "os.h"
 #include "tick.h"
@@ -25,8 +26,6 @@ void assert_failed(uint8_t* file, uint32_t line)
 	}
 }
 
-extern const char* gpVersion;
-
 FORCE_C int main(void)
 {
 	Cbf pfTickCb = OS_Init();
@@ -37,9 +36,7 @@ FORCE_C int main(void)
 	LEDMat_Init();
 
 	__enable_irq();
-	CLI_Puts("VER: ");
-	CLI_Puts(gpVersion);
-	CLI_Puts("\n");
+	CLI_Printf("VER: %s\n", VERSION);
 
 	OS_Start();
 
