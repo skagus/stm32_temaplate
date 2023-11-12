@@ -17,16 +17,17 @@ uint16 SPI1_Tx(uint16 nData)
 	return nRcv;
 }
 
+#if 0 // FIXIT:
 void SendMulti(uint8* aData, uint32 nLen)
 {
 	while (nLen)
 	{
-		SPI_Tx(*aData);
+		SPI1_Tx(*aData);
 		aData++;
 		nLen--;
 	}
 }
-
+#endif
 
 void SPI1_Init()
 {

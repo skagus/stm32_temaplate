@@ -16,20 +16,13 @@ void LED_Set(int bOn)
 	}
 }
 
-uint32 gbIsOn;
 void led_Run(void* pParam)
 {
 	while (1)
 	{
-		if (gbIsOn)
-		{
-			LED_Set(1);
-		}
-		else
-		{
-			LED_Set(0);
-		}
-		gbIsOn = !gbIsOn;
+		LED_Set(1);
+		OS_Wait(0, OS_MSEC(100));
+		LED_Set(0);
 		OS_Wait(0, OS_MSEC(100));
 	}
 }
@@ -47,7 +40,6 @@ void LED_Init()
 	stGpioInit.GPIO_Speed = GPIO_Speed_2MHz;
 	stGpioInit.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOC, &stGpioInit);
-
 
 	OS_CreateTask(led_Run, _aStk + SIZE_STK, NULL, "led");
 }

@@ -3,6 +3,7 @@
 #include "config.h"
 #include "macro.h"
 #include "os.h"
+#include "cli.h"
 #include "drv_spi1.h"
 #include "led_matrix.h"
 
@@ -87,6 +88,19 @@ void LEDMat_SendCh(char nCh)
 	gnDspCh = nCh;
 }
 
+void ledmat_CmdDisp(uint8 argc, char* argv[])
+{
+	if (2 == argc)
+	{
+		gnDspCh = argv[1][0];
+	}
+	else
+	{
+		CLI_Printf("%s Display Char in LED matrix\r\n", argv[0]);
+		CLI_Printf("\t$> %s <char> : Set display char\r\n", argv[0]);
+	}
+}
+
 #define SIZE_STK	(128)
 static uint32 _aStk[SIZE_STK + 1];
 
@@ -102,6 +116,7 @@ void LEDMat_Init()
 	GPIO_Init(LED_MAT_PORT, &stGpioInit);
 
 	Matrix_Init();
+	CLI_Register((const char*)"ledmat", ledmat_CmdDisp);
 
 	OS_CreateTask(ledmat_Run, _aStk + SIZE_STK, NULL, "mat");
 }

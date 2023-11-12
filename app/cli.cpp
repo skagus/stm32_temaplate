@@ -34,22 +34,56 @@
 
 
 //////////////////////////////////////////////////
+#define LEN_LINE            (64)
+#define MAX_CMD_COUNT       (8)
+#define MAX_ARG_TOKEN       (8)		// Command line의 maximum argument 개수.
+
+
+typedef struct _CmdInfo
+{
+	const char* szCmd;
+	CmdHandler* pHandle;
+} CmdInfo;
+
+CmdInfo gaCmds[MAX_CMD_COUNT];
+uint8 gnCmds;
+
+
+void cli_PutCh(uint8 nCh)
+{
+	uint32 nBufLen;
+	uint8* pBuf;
+
+	while (true)
+	{
+		pBuf = UART_GetWriteBuf(&nBufLen);
+		if (nullptr == pBuf)
+		{
+			CLI_Flush();
+			continue;
+		}
+		break;
+	}
+
+	*pBuf = nCh;
+	UART_PushWriteBuf(1);
+}
+
 
 int CLI_Puts(const char* szStr)
 {
 	uint32 nBufLen;
-	uint8* pBuf = gstTxBuf.PQ_GetAddPtr(&nBufLen);
+	uint8* pBuf = UART_GetWriteBuf(&nBufLen);
+
 	uint32 nStrLen = strlen(szStr);
 	uint32 nCpyLen = MIN(nStrLen, nBufLen);
+
 	memcpy(pBuf, szStr, nCpyLen);
 
-	__disable_irq();
-	gstTxBuf.PQ_UpdateAddPtr(nCpyLen);
-	UART_DmaTx();
-	__enable_irq();
-
+	UART_PushWriteBuf(nCpyLen);
 	return nCpyLen;
 }
+
 
 int CLI_Printf(const char* szFmt, ...)
 {
@@ -69,25 +103,135 @@ int CLI_Printf(const char* szFmt, ...)
 
 void CLI_Flush()
 {
-	while (UART_CountTxFree() < 128);
+	while (UART_CountTxFree() < 128)
+	{
+		OS_Wait(BIT(EVT_UART_TX), OS_MSEC(10));
+	}
 }
+
+/**
+ * CMD runner.
+*/
+void cli_CmdHelp(uint8 argc, char* argv[])
+{
+	if (argc > 1)
+	{
+		uint32 nNum = CLI_GetInt(argv[1]);
+		CLI_Printf("help with %08lx\r\n", nNum);
+		char* aCh = (char*)&nNum;
+		CLI_Printf("help with %02X %02X %02X %02X\r\n", aCh[0], aCh[1], aCh[2], aCh[3]);
+	}
+	else
+	{
+		for (uint8 nIdx = 0; nIdx < gnCmds; nIdx++)
+		{
+			CLI_Printf("%d: %s\r\n", nIdx, gaCmds[nIdx].szCmd);
+		}
+	}
+}
+
+void cli_RunCmd(char* szCmdLine)
+{
+	char* aTok[MAX_ARG_TOKEN];
+	uint8 nCnt = 0;
+	char* pTok = strtok(szCmdLine, " ");
+	while ((NULL != pTok) && (nCnt < MAX_ARG_TOKEN))
+	{
+		aTok[nCnt++] = pTok;
+		pTok = strtok(NULL, " ");
+	}
+	bool bExecute = false;
+	if (nCnt > 0)
+	{
+		for (uint8 nIdx = 0; nIdx < gnCmds; nIdx++)
+		{
+			if (0 == strcmp(aTok[0], gaCmds[nIdx].szCmd))
+			{
+				gaCmds[nIdx].pHandle(nCnt, aTok);
+				bExecute = true;
+				break;
+			}
+		}
+	}
+	if (false == bExecute)
+	{
+		CLI_Printf("Unknown command: %s\r\n", szCmdLine);
+	}
+}
+
+uint32 CLI_GetInt(char* szStr)
+{
+	uint32 nNum;
+	char* pEnd;
+	uint8 nLen = strlen(szStr);
+	if ((szStr[0] == '0') && ((szStr[1] == 'b') || (szStr[1] == 'B'))) // Binary.
+	{
+		nNum = strtoul(szStr + 2, &pEnd, 2);
+	}
+	else
+	{
+		nNum = (uint32)strtoul(szStr, &pEnd, 0);
+	}
+
+	if ((pEnd - szStr) != nLen)
+	{
+		nNum = NOT_NUMBER;
+	}
+	return nNum;
+}
+
+void CLI_Register(const char* szCmd, CmdHandler* pfHandle)
+{
+	gaCmds[gnCmds].szCmd = szCmd;
+	gaCmds[gnCmds].pHandle = pfHandle;
+	gnCmds++;
+}
+
 
 /**
 Console Task.
 */
 void cli_Run(void* pParam)
 {
-	uint8 aBuf[128];
+	uint8 nLen = 0;
+	char aLine[LEN_LINE];
+	uint8 nCh;
+
 	while (1)
 	{
-		uint32 nBytes = UART_GetData(aBuf, 128);
-		if (nBytes > 0)
+		while (UART_GetData(&nCh, 1) > 0)
 		{
-			LEDMat_SendCh(aBuf[0]);
-			aBuf[nBytes] = 0;
-			CLI_Printf("%s", aBuf);
+			if (' ' <= nCh && nCh <= '~') // ASCII. normal.
+			{
+				cli_PutCh(nCh);
+				aLine[nLen] = nCh;
+				nLen++;
+			}
+			else if (('\n' == nCh) || ('\r' == nCh))
+			{
+				if (nLen > 0)
+				{
+					aLine[nLen] = 0;
+					CLI_Puts("\r\n");
+					cli_RunCmd(aLine);
+					nLen = 0;
+				}
+				CLI_Puts("\r\n$> ");
+			}
+			else if (0x7F == nCh) // backspace.
+			{
+				if (nLen > 0)
+				{
+					CLI_Puts("\b \b");
+					nLen--;
+				}
+			}
+			else
+			{
+				CLI_Printf("~ %X\r\n", nCh);
+			}
 		}
-		OS_Wait(BIT(EVT_UART_RX), OS_MSEC(5000));
+		OS_Wait(BIT(EVT_UART_RX), 0);
 	}
 }
 
@@ -99,6 +243,7 @@ void CLI_Init()
 	UART_Config();
 	UART_DmaConfig();
 
+	CLI_Register("help", cli_CmdHelp);
 	OS_CreateTask(cli_Run, _aStk + SIZE_STK, NULL, "Con");
 	//	gstTxBuf.Init();
 }
