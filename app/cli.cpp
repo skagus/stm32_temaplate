@@ -11,7 +11,7 @@
 #include "macro.h"
 #include "os.h"
 #include "led_matrix.h"
-#include "console.h"
+#include "cli.h"
 #include "drv_uart.h"
 
 /**
@@ -35,7 +35,7 @@
 
 //////////////////////////////////////////////////
 
-int CON_Puts(const char* szStr)
+int CLI_Puts(const char* szStr)
 {
 	uint32 nBufLen;
 	uint8* pBuf = gstTxBuf.PQ_GetAddPtr(&nBufLen);
@@ -51,7 +51,7 @@ int CON_Puts(const char* szStr)
 	return nCpyLen;
 }
 
-int CON_Printf(const char* szFmt, ...)
+int CLI_Printf(const char* szFmt, ...)
 {
 	uint32 nBufLen;
 	uint8* pBuf = UART_GetWrteBuf(&nBufLen);
@@ -68,7 +68,7 @@ int CON_Printf(const char* szFmt, ...)
 	return nLen;
 }
 
-void CON_Flush()
+void CLI_Flush()
 {
 	while (UART_CountTxFree() < 128);
 }
@@ -76,7 +76,7 @@ void CON_Flush()
 /**
 Console Task.
 */
-void con_Run(void* pParam)
+void cli_Run(void* pParam)
 {
 	uint8 aBuf[128];
 	while (1)
@@ -86,7 +86,7 @@ void con_Run(void* pParam)
 		{
 			LEDMat_SendCh(aBuf[0]);
 			aBuf[nBytes] = 0;
-			CON_Printf("%s", aBuf);
+			CLI_Printf("%s", aBuf);
 		}
 		OS_Wait(BIT(EVT_UART_RX), OS_MSEC(5000));
 	}
@@ -95,11 +95,11 @@ void con_Run(void* pParam)
 #define SIZE_STK	(128)
 static uint32 _aStk[SIZE_STK + 1];
 
-void CON_Init()
+void CLI_Init()
 {
 	UART_Config();
 	UART_DmaConfig();
 
-	OS_CreateTask(con_Run, _aStk + SIZE_STK, NULL, "Con");
+	OS_CreateTask(cli_Run, _aStk + SIZE_STK, NULL, "Con");
 	//	gstTxBuf.Init();
 }

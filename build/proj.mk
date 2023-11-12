@@ -45,7 +45,7 @@ LIB_FILE =
 ################ source files ##############
 # Source file들은 project TOP 에서의 위치를 나타낸다.
 CSRC =	\
-		drv/drv_spi.c \
+		drv/drv_spi1.c \
 		std_lib/stm32f10x_usart.c \
 		std_lib/stm32f10x_rcc.c \
 		std_lib/stm32f10x_gpio.c \
@@ -60,7 +60,7 @@ CSRC =	\
 CPPSRC = \
 		drv/drv_uart.cpp \
 		app/font.cpp \
-		app/console.cpp \
+		app/cli.cpp \
 		app/led.cpp \
 		app/tick.cpp \
 		app/led_matrix.cpp \

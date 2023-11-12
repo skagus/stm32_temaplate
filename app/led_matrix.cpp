@@ -1,14 +1,10 @@
-#include <stm32f10x_rcc.h>
-#include <stm32f10x_spi.h>
 #include <stm32f10x_gpio.h>
 #include "types.h"
 #include "config.h"
 #include "macro.h"
 #include "os.h"
-#include "tick.h"
-#include "led.h"
+#include "drv_spi1.h"
 #include "led_matrix.h"
-#include "drv_spi.h"
 
 #define EN_NSS_PIN						(0)	// Not working..
 
@@ -32,7 +28,7 @@ uint8 gnDspCh = 'A';
 void SendTwo(uint8 nHigh, uint8 nLow)
 {
 	HW_SPI_CS_LOW();
-	SPI_Tx(((uint16)nHigh << 8) | nLow);
+	SPI1_Tx(((uint16)nHigh << 8) | nLow);
 	HW_SPI_CS_HIGH();
 }
 
@@ -96,7 +92,7 @@ static uint32 _aStk[SIZE_STK + 1];
 
 void LEDMat_Init()
 {
-	SPI_Init4led();
+	SPI1_Init();
 
 	GPIO_InitTypeDef stGpioInit;
 	GPIO_SetBits(LED_MAT_PORT, LED_MAT_CS);

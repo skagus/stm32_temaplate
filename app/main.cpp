@@ -5,7 +5,7 @@
 #include "macro.h"
 #include "os.h"
 #include "tick.h"
-#include "console.h"
+#include "cli.h"
 #include "led.h"
 #include "led_matrix.h"
 
@@ -32,14 +32,14 @@ FORCE_C int main(void)
 	Cbf pfTickCb = OS_Init();
 	TICK_Init(MS_PER_TICK, pfTickCb);
 
-	CON_Init();
+	CLI_Init();
 	LED_Init();
 	LEDMat_Init();
 
 	__enable_irq();
-	CON_Puts("VER: ");
-	CON_Puts(gpVersion);
-	CON_Puts("\n");
+	CLI_Puts("VER: ");
+	CLI_Puts(gpVersion);
+	CLI_Puts("\n");
 
 	OS_Start();
 
