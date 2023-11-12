@@ -25,14 +25,14 @@ void UrgentUartInit()
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 
 	GPIO_InitTypeDef stGpioInit;
-	stGpioInit.GPIO_Pin = GPIO_Pin_9;
+	stGpioInit.GPIO_Pin = CON_TX;
 	stGpioInit.GPIO_Mode = GPIO_Mode_AF_PP;
 	stGpioInit.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_Init(GPIOA, &stGpioInit);
+	GPIO_Init(CON_PORT, &stGpioInit);
 
-	stGpioInit.GPIO_Pin = GPIO_Pin_10;
+	stGpioInit.GPIO_Pin = CON_RX;
 	stGpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOA, &stGpioInit);
+	GPIO_Init(CON_PORT, &stGpioInit);
 
 	USART_InitTypeDef stInitUart;
 	USART_StructInit(&stInitUart);

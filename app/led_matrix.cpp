@@ -2,84 +2,21 @@
 #include <stm32f10x_spi.h>
 #include <stm32f10x_gpio.h>
 #include "types.h"
+#include "config.h"
 #include "macro.h"
 #include "os.h"
 #include "tick.h"
 #include "led.h"
 #include "led_matrix.h"
-
-#define GPIO_HW_SPI			 			GPIOA
-#define GPIO_HW_SPI_CS					GPIO_Pin_4    // NSS PIN
-#define GPIO_HW_SPI_SCLK				GPIO_Pin_5    // Clock
-#define GPIO_HW_SPI_MISO				GPIO_Pin_7    // Master Input to Slave Output
+#include "drv_spi.h"
 
 #define EN_NSS_PIN						(0)	// Not working..
 
 extern uint8 gaFont8x8[128][8];
-uint8 gnDspCh;
+uint8 gnDspCh = 'A';
 
-void SPI_Init4led()
-{
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
-	//	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-
-		//	GPIO_PinRemapConfig(GPIO_Remap_SPI1, ENABLE);
-
-	GPIO_SetBits(GPIO_HW_SPI, GPIO_HW_SPI_MISO | GPIO_HW_SPI_SCLK | GPIO_HW_SPI_CS);
-
-	GPIO_InitTypeDef stGpioInit;
-	stGpioInit.GPIO_Pin = GPIO_HW_SPI_MISO | GPIO_HW_SPI_SCLK;
-	stGpioInit.GPIO_Speed = GPIO_Speed_50MHz;
-	stGpioInit.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_Init(GPIO_HW_SPI, &stGpioInit);
-
-#if EN_NSS_PIN
-	stGpioInit.GPIO_Pin = GPIO_HW_SPI_CS;
-	stGpioInit.GPIO_Speed = GPIO_Speed_50MHz;
-	stGpioInit.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_Init(GPIO_HW_SPI, &stGpioInit);
-#else
-	stGpioInit.GPIO_Pin = GPIO_HW_SPI_CS;
-	stGpioInit.GPIO_Speed = GPIO_Speed_50MHz;
-	stGpioInit.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(GPIO_HW_SPI, &stGpioInit);
-#endif
-
-	//	GPIO_PinLockConfig(GPIO_HW_SPI, GPIO_HW_SPI_MISO | GPIO_HW_SPI_SCLK | GPIO_HW_SPI_CS);
-	SPI_InitTypeDef stInitSpi;
-	SPI_StructInit(&stInitSpi);
-	stInitSpi.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_16;
-	stInitSpi.SPI_Mode = SPI_Mode_Master;
-	stInitSpi.SPI_DataSize = SPI_DataSize_16b;
-#if EN_NSS_PIN
-	stInitSpi.SPI_NSS = SPI_NSS_Hard;
-#else
-	stInitSpi.SPI_NSS = SPI_NSS_Soft;
-#endif
-	SPI_Init(SPI1, &stInitSpi);
-	SPI_SSOutputCmd(SPI1, ENABLE);
-	SPI_Cmd(SPI1, ENABLE);
-}
-
-#if EN_NSS_PIN
-#define HW_SPI_CS_LOW()
-#define HW_SPI_CS_HIGH()
-#else
-#define HW_SPI_CS_LOW()       GPIO_ResetBits(GPIO_HW_SPI, GPIO_HW_SPI_CS)
-#define HW_SPI_CS_HIGH()      GPIO_SetBits(GPIO_HW_SPI, GPIO_HW_SPI_CS)
-#endif
-
-uint16 SPI_Tx(uint16 nData)
-{
-	uint16 nRcv = SPI_I2S_ReceiveData(SPI1);
-	/* Send SPIy data */
-	SPI_I2S_SendData(SPI1, nData);
-	/* Wait for SPIy Tx buffer empty */
-	while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_BSY) == SET);
-
-	return nRcv;
-}
-
+#define HW_SPI_CS_LOW()       GPIO_ResetBits(SPI1_PORT, LED_MAT_CS)
+#define HW_SPI_CS_HIGH()      GPIO_SetBits(SPI1_PORT, LED_MAT_CS)
 
 #define DECODE_MODE_ADDR  (0x09)
 #define DECODE_MODE_VAL   (0x00) // No decode.
@@ -92,29 +29,10 @@ uint16 SPI_Tx(uint16 nData)
 #define TEST_DISPLAY_ADDR (0x0F)
 #define TEST_DISPLAY_VAL  (0x00)
 
-void SendMulti(uint8* aData, uint32 nLen)
+void SendTwo(uint8 nHigh, uint8 nLow)
 {
 	HW_SPI_CS_LOW();
-	while (nLen)
-	{
-		SPI_Tx(*aData);
-		aData++;
-		nLen--;
-	}
-	HW_SPI_CS_HIGH();
-}
-
-void SendU16(uint16 nData)
-{
-	HW_SPI_CS_LOW();
-	SPI_Tx(nData);
-	HW_SPI_CS_HIGH();
-}
-
-void SendTwo(uint8 nAddr, uint8 nData)
-{
-	HW_SPI_CS_LOW();
-	SPI_Tx(((uint16)nAddr << 8) | nData);
+	SPI_Tx(((uint16)nHigh << 8) | nLow);
 	HW_SPI_CS_HIGH();
 }
 
@@ -131,7 +49,7 @@ void refreshMat(uint8* pFrame)
 {
 	for (int i = 0; i < 8; i++)
 	{
-		SendU16(((8 - i) << 8) | pFrame[i]);
+		SendTwo(8 - i, pFrame[i]);
 	}
 }
 
@@ -179,6 +97,14 @@ static uint32 _aStk[SIZE_STK + 1];
 void LEDMat_Init()
 {
 	SPI_Init4led();
+
+	GPIO_InitTypeDef stGpioInit;
+	GPIO_SetBits(LED_MAT_PORT, LED_MAT_CS);
+	stGpioInit.GPIO_Pin = LED_MAT_CS;
+	stGpioInit.GPIO_Speed = GPIO_Speed_50MHz;
+	stGpioInit.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(LED_MAT_PORT, &stGpioInit);
+
 	Matrix_Init();
 
 	OS_CreateTask(ledmat_Run, _aStk + SIZE_STK, NULL, "mat");

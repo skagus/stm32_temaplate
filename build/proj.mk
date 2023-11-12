@@ -23,6 +23,7 @@ DEFINE += -DHSE_VALUE=8000000
 ################  Include.
 # Add relative path from $(PRJ_TOP)
 PRJ_INC = \
+		drv \
 		cmsis \
 		std_lib \
 		app \
@@ -44,6 +45,7 @@ LIB_FILE =
 ################ source files ##############
 # Source file들은 project TOP 에서의 위치를 나타낸다.
 CSRC =	\
+		drv/drv_spi.c \
 		std_lib/stm32f10x_usart.c \
 		std_lib/stm32f10x_rcc.c \
 		std_lib/stm32f10x_gpio.c \
@@ -56,8 +58,8 @@ CSRC =	\
 		cmsis/debug_cm3.c
 
 CPPSRC = \
+		drv/drv_uart.cpp \
 		app/font.cpp \
-		app/con_uart.cpp \
 		app/console.cpp \
 		app/led.cpp \
 		app/tick.cpp \

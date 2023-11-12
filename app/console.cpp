@@ -12,6 +12,7 @@
 #include "os.h"
 #include "led_matrix.h"
 #include "console.h"
+#include "drv_uart.h"
 
 /**
  DMA 사용 전략.
@@ -53,7 +54,7 @@ int CON_Puts(const char* szStr)
 int CON_Printf(const char* szFmt, ...)
 {
 	uint32 nBufLen;
-	uint8* pBuf = gstTxBuf.PQ_GetAddPtr(&nBufLen);
+	uint8* pBuf = UART_GetWrteBuf(&nBufLen);
 
 	va_list stVA;
 	int nLen;
@@ -62,38 +63,14 @@ int CON_Printf(const char* szFmt, ...)
 	nLen = vsnprintf((char*)pBuf, nBufLen, szFmt, stVA);
 	va_end(stVA);
 
-	__disable_irq();
-	gstTxBuf.PQ_UpdateAddPtr(nLen);
-	UART_DmaTx();
-	__enable_irq();
+	UART_PushWriteBuf(nLen);
 
 	return nLen;
 }
 
 void CON_Flush()
 {
-	uint32 nAvail;
-	do
-	{
-		gstTxBuf.PQ_GetAddPtr(&nAvail);
-	} while (nAvail < 128);
-}
-
-
-uint32 UART_GetData(uint8* pBuf, uint32 nBufLen)
-{
-	static uint32 gnPrvIdx = 0;
-
-	uint32 nCurIdx = UART_RX_BUF_LEN - DMA_GetCurrDataCounter(CON_RX_DMA_CH);
-	uint32 nCnt = 0;
-	while ((gnPrvIdx != nCurIdx) && (nCnt < nBufLen))
-	{
-		*pBuf = gaRxBuf[gnPrvIdx];
-		pBuf++;
-		gnPrvIdx = (gnPrvIdx + 1) % UART_RX_BUF_LEN;
-		nCnt++;
-	}
-	return nCnt;
+	while (UART_CountTxFree() < 128);
 }
 
 /**
@@ -121,19 +98,7 @@ static uint32 _aStk[SIZE_STK + 1];
 void CON_Init()
 {
 	UART_Config();
-
-	// for UART DMA, TC, RXNE is not used.
-	//	USART_ITConfig(CON_UART, USART_IT_TC, DISABLE);
-	//	USART_ITConfig(CON_UART, USART_IT_RXNE, DISABLE);
-	USART_ITConfig(CON_UART, USART_IT_IDLE, ENABLE);
-
-	/* enable DMA clock */
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
-
 	UART_DmaConfig();
-
-	USART_DMACmd(CON_UART, USART_DMAReq_Rx | USART_DMAReq_Tx, ENABLE);
-	USART_Cmd(CON_UART, ENABLE);
 
 	OS_CreateTask(con_Run, _aStk + SIZE_STK, NULL, "Con");
 	//	gstTxBuf.Init();
