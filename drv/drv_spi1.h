@@ -8,6 +8,7 @@ extern "C" {
 
 	void SPI1_Init();
 	uint16 SPI1_Tx(uint16 nData);
+	void SPI1_DmaTx(uint8* pBuf, uint16_t nLen);
 
 #ifdef __cplusplus
 }

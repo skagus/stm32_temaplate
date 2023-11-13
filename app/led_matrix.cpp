@@ -44,16 +44,50 @@ void Matrix_Init()
 
 void refreshMat(uint8* pFrame)
 {
+#if 1
+	uint8 anTx[16];
+	for (int i = 0; i < 8; i++)
+	{
+		anTx[i * 2 + 1] = 8 - i;
+		anTx[i * 2] = pFrame[i];
+	}
+#if 1
+	SPI1_DmaTx(anTx, sizeof(anTx));
+#else
+	uint16* aPtr = (uint16*)anTx;
+	for (int i = 0; i < 8; i++)
+	{
+		HW_SPI_CS_LOW();
+		SPI1_Tx(*aPtr);
+		HW_SPI_CS_HIGH();
+		aPtr++;
+	}
+#endif
+
+#else
 	for (int i = 0; i < 8; i++)
 	{
 		SendTwo(8 - i, pFrame[i]);
 	}
+#endif
 }
 
 void ledmat_Run(void* pParam)
 {
+	GPIO_InitTypeDef stGpioInit;
+	GPIO_SetBits(LED_MAT_PORT, LED_MAT_CS);
+	stGpioInit.GPIO_Pin = LED_MAT_CS;
+	stGpioInit.GPIO_Speed = GPIO_Speed_50MHz;
+	stGpioInit.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(LED_MAT_PORT, &stGpioInit);
+
+	OS_Lock(BIT(LOCK_SPI1));
+	Matrix_Init();
+	OS_Unlock(BIT(LOCK_SPI1));
+
 	uint8 nCnt = 0;
 	uint8* aDsp = gaFont8x8[0];
+
 	while (1)
 	{
 #if 0
@@ -70,8 +104,10 @@ void ledmat_Run(void* pParam)
 		}
 		nCnt++;
 #endif
+		OS_Lock(BIT(LOCK_SPI1));
 		refreshMat(aDsp);
 		SendTwo(INTENSITY_ADDR, nCnt / 2);
+		OS_Unlock(BIT(LOCK_SPI1));
 
 		aDsp = gaFont8x8[gnDspCh];
 		OS_Wait(0, OS_MSEC(100));
@@ -108,14 +144,7 @@ void LEDMat_Init()
 {
 	SPI1_Init();
 
-	GPIO_InitTypeDef stGpioInit;
-	GPIO_SetBits(LED_MAT_PORT, LED_MAT_CS);
-	stGpioInit.GPIO_Pin = LED_MAT_CS;
-	stGpioInit.GPIO_Speed = GPIO_Speed_50MHz;
-	stGpioInit.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(LED_MAT_PORT, &stGpioInit);
 
-	Matrix_Init();
 	CLI_Register((const char*)"ledmat", ledmat_CmdDisp);
 
 	OS_CreateTask(ledmat_Run, _aStk + SIZE_STK, NULL, "mat");
