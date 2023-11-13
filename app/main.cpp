@@ -26,8 +26,18 @@ void assert_failed(uint8_t* file, uint32_t line)
 	}
 }
 
+#define NOINIT_MAGIC	(0xA23CD28E)
+uint32 gnCntBoot SECT_AT(.noinit);
+uint32 gnNoInitMagic SECT_AT(.noinit);
+
 FORCE_C int main(void)
 {
+	if (NOINIT_MAGIC != gnNoInitMagic)
+	{
+		gnNoInitMagic = NOINIT_MAGIC;
+		gnCntBoot = 0;
+	}
+
 	Cbf pfTickCb = OS_Init();
 	TICK_Init(MS_PER_TICK, pfTickCb);
 
@@ -36,7 +46,8 @@ FORCE_C int main(void)
 	LEDMat_Init();
 
 	__enable_irq();
-	CLI_Printf("VER: %s\n", VERSION);
+	gnCntBoot++;
+	CLI_Printf("VER: %s, %X th Boot\n", VERSION, gnCntBoot);
 
 	OS_Start();
 

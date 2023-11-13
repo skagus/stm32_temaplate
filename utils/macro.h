@@ -59,3 +59,5 @@
 #define likely(x)					(x)
 #define unlikely(x)					(x)
 #endif
+
+#define SECT_AT(x)	__attribute__((section(#x)))

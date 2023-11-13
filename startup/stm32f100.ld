@@ -120,13 +120,16 @@ SECTIONS
 		/* This is used by the startup in order to initialize the .data secion */
 		_edata = . ;
 	} >RAM AT>FLASH
-
 /*
 	.data2 :
 	{
 		*stm32f10x_rcc.c.o(.data*)
 	} >RAM2 AT>FLASH
 */
+	.noinit :
+	{
+		*(.noinit*)
+	} > RAM
 	/* This is the uninitialized data section */
 	.bss :
 	{
