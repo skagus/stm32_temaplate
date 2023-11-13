@@ -24,6 +24,8 @@ extern "C"
 	uint32 OS_SyncEvt(uint32 bmEvt);
 	void OS_AsyncEvt(uint32 nEvtID);
 	void OS_Stop(uint32 bmTask);
+	void OS_Lock(uint32 bmLock);
+	void OS_Unlock(uint32 bmLock);
 
 #if defined(__cplusplus)
 }

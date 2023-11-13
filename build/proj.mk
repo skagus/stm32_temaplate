@@ -53,11 +53,11 @@ CSRC =	\
 		std_lib/stm32f10x_spi.c \
 		std_lib/misc.c \
 		startup/startup_stm32f10x.c \
-		utils/os.c \
 		cmsis/system_stm32f10x.c \
 		cmsis/debug_cm3.c
 
 CPPSRC = \
+		utils/os.cpp \
 		drv/drv_uart.cpp \
 		app/font.cpp \
 		app/cli.cpp \

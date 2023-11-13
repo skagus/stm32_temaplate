@@ -18,5 +18,6 @@ enum FTLEvt
 enum FTL_Lock
 {
 	LOCK_UART,			///< UART 사용을 위한 Locking.
+	LOCK_SPI1,			///< SPI1 을 차지할 때...
 	NUM_OS_LOCK,
 };

@@ -3,6 +3,7 @@
 #include <core_cm3.h>
 #include "macro.h"
 #include "os.h"
+#include "cli.h"
 
 #if (1) // defined(__riscv__)
 typedef void* TCB;
@@ -15,10 +16,10 @@ struct OS_Info
 	uint8	_bInCritical;	///< The OS in critical section.(Never context switch in critical section)
 	uint32	_curTID;		///< 현재 해당 CPU에서 돌고있는 task ID.
 	uint32	_bmRdyTask;		///< Ready task bitmap, (_aBlockBy보다 우선순위 높음)
+	uint32	_bmLocked;		///< Resource bitmap that is locked.
 
 	uint32	_nTick;					///< Just tick counter
 	uint32	_nTmpTick;				///< Tick count for async tick up.
-
 	uint32	_bmAsyncEvt;			///< Async event중 처리되지 않은 것.
 
 	uint32	_aWaitEvt[MAX_TASK];	///< Task가 기다리는 event, wakeup상태에서도 의미있음.
@@ -69,7 +70,7 @@ void os_SetNextTask(void)
 #if (EN_SIM)
 			CPU_Sleep();
 #else
-			__WFI();
+//			__WFI();
 #endif
 			os_handleAsyncEvt();
 			bmRdy = gstOS._bmRdyTask;
@@ -80,7 +81,6 @@ void os_SetNextTask(void)
 #if defined(__arm__) || defined(__riscv__)
 	pCurTCB = &(gstOS._aTCB[nNxtTID]);
 #endif
-
 }
 
 
@@ -374,6 +374,25 @@ void OS_Stop(uint32 bmTask)
 	}
 }
 
+void OS_Lock(uint32 bmLock)
+{
+	while (bmLock)
+	{
+		uint8 nId = BIT_SCAN_LSB(bmLock);
+		while (BIT(nId) & gstOS._bmLocked)
+		{
+			OS_Wait(BIT(EVT_LOCK), 0);
+		}
+		BIT_SET(gstOS._bmLocked, BIT(nId));
+		BIT_CLR(bmLock, BIT(nId));
+	}
+}
+
+void OS_Unlock(uint32 bmLock)
+{
+	BIT_CLR(gstOS._bmLocked, bmLock);
+	OS_SyncEvt(BIT(EVT_LOCK));
+}
 
 /////////////////////////////
 
