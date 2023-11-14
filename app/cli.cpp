@@ -90,15 +90,14 @@ int CLI_Printf(const char* szFmt, ...)
 	uint32 nBufLen;
 	uint8* pBuf = UART_GetWriteBuf(&nBufLen);
 
+	int nUsedLen;
 	va_list stVA;
-	int nLen;
-
 	va_start(stVA, szFmt);
-	nLen = vsnprintf((char*)pBuf, nBufLen, szFmt, stVA);
+	nUsedLen = vsnprintf((char*)pBuf, nBufLen, szFmt, stVA);
 	va_end(stVA);
 
-	UART_PushWriteBuf(nLen);
-	return nLen;
+	UART_PushWriteBuf(nUsedLen);
+	return nUsedLen;
 }
 
 void CLI_Flush()

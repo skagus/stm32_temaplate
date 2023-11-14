@@ -13,6 +13,12 @@ FORCE_C void default_handler(void)
 		;
 }
 
+FORCE_C void default_exception(void)
+{
+	while (1)
+		;
+}
+
 #if !defined(CPP_EXIST)
 void __libc_init_array(void) {}
 #else
@@ -72,15 +78,15 @@ void Reset_Handler(void)
 
 
 /* Vector Table */
-void NMI_Handler(void) __attribute__((weak, alias("default_handler")));
-void HardFault_Handler(void) __attribute__((weak, alias("default_handler")));
-void MemMange_Handler(void) __attribute__((weak, alias("default_handler")));
-void BusFault_Handler(void) __attribute__((weak, alias("default_handler")));
-void UsageFault_Handler(void) __attribute__((weak, alias("default_handler")));
-void SVC_Handler(void) __attribute__((weak, alias("default_handler")));
-void DebugMon_Handler(void) __attribute__((weak, alias("default_handler")));
-void PendSV_Handler(void) __attribute__((weak, alias("default_handler")));
-void SysTick_Handler(void) __attribute__((weak, alias("default_handler")));
+void NMI_Handler(void) __attribute__((weak, alias("default_exception")));
+void HardFault_Handler(void) __attribute__((weak, alias("default_exception")));
+void MemMange_Handler(void) __attribute__((weak, alias("default_exception")));
+void BusFault_Handler(void) __attribute__((weak, alias("default_exception")));
+void UsageFault_Handler(void) __attribute__((weak, alias("default_exception")));
+void SVC_Handler(void) __attribute__((weak, alias("default_exception")));
+void DebugMon_Handler(void) __attribute__((weak, alias("default_exception")));
+void PendSV_Handler(void) __attribute__((weak, alias("default_exception")));
+void SysTick_Handler(void) __attribute__((weak, alias("default_exception")));
 void WWDG_IRQHandler(void) __attribute__((weak, alias("default_handler")));
 void PVD_IRQHandler(void) __attribute__((weak, alias("default_handler")));
 void TAMPER_STAMP_IRQHandler(void) __attribute__((weak, alias("default_handler")));

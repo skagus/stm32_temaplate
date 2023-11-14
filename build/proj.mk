@@ -3,7 +3,7 @@
 PRJ_TOP = ..
 TARGET = out/templ
 OBJDIR = out
-OPTI = -O1
+OPTI = -O0
 
 VER_STRING := $$(date +%Y%m%d_%H%M%S)_$(OPTI)
 
