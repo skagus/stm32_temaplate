@@ -7,43 +7,34 @@
 
 #include "drv_spi1.h"
 
+DMA_InitTypeDef gstTxInit;
+DMA_InitTypeDef gstRxInit;
+
 uint16 SPI1_Tx(uint16 nData)
 {
-	uint16 nRcv = SPI_I2S_ReceiveData(SPI1);
 	/* Send SPIy data */
 	SPI_I2S_SendData(SPI1, nData);
 	/* Wait for SPIy Tx buffer empty */
 	while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_BSY) == SET);
 
+	uint16 nRcv = SPI_I2S_ReceiveData(SPI1);
+
 	return nRcv;
 }
 
-void SPI1_DmaTx(uint8* pBuf, uint16_t nLen)
+void SPI1_DmaTx(uint8* pRx, uint8* pTx, uint16_t nLen)
 {
-	DMA_InitTypeDef stTxInit;
-	DMA_StructInit(&stTxInit);
-	stTxInit.DMA_DIR = DMA_DIR_PeripheralDST;
-	stTxInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	stTxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
-	stTxInit.DMA_Priority = DMA_Priority_High;
-	stTxInit.DMA_BufferSize = nLen;
-	stTxInit.DMA_MemoryBaseAddr = (uint32)pBuf;
-	DMA_Init(SPI1_TX_DMA_CH, &stTxInit);
-
-	DMA_InitTypeDef stRxInit;
-	DMA_StructInit(&stRxInit);
-	stRxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
-	stRxInit.DMA_Priority = DMA_Priority_High;
-	stRxInit.DMA_BufferSize = nLen;
-	stRxInit.DMA_MemoryBaseAddr = (uint32)pBuf;
-	stTxInit.DMA_DIR = DMA_DIR_PeripheralDST;
-	stTxInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	stTxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
-	stTxInit.DMA_Priority = DMA_Priority_High;
-	DMA_Init(SPI1_RX_DMA_CH, &stRxInit);
-	/* Enable SPI Rx/Tx DMA Request*/
-
 	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Rx | SPI_I2S_DMAReq_Tx, ENABLE);
+
+	gstTxInit.DMA_MemoryBaseAddr = (uint32)pTx;
+	gstTxInit.DMA_BufferSize = nLen;
+	DMA_Init(SPI1_TX_DMA_CH, &gstTxInit);
+
+	gstRxInit.DMA_MemoryBaseAddr = (uint32)pRx;
+	gstRxInit.DMA_BufferSize = nLen;
+	DMA_Init(SPI1_RX_DMA_CH, &gstRxInit);
+
+	/* Enable SPI Rx/Tx DMA Request*/
 	DMA_Cmd(SPI1_RX_DMA_CH, ENABLE);
 	DMA_Cmd(SPI1_TX_DMA_CH, ENABLE);
 
@@ -61,20 +52,23 @@ void SPI1_DmaTx(uint8* pBuf, uint16_t nLen)
 void SPI1_DMA_Init()
 {
 	// RX setup.
-	DMA_InitTypeDef stRxInit;
-	DMA_StructInit(&stRxInit);
-	stRxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
-	stRxInit.DMA_Priority = DMA_Priority_High;
-	DMA_Init(SPI1_RX_DMA_CH, &stRxInit);
+	DMA_StructInit(&gstRxInit);
+	gstRxInit.DMA_MemoryBaseAddr = 1;
+	gstRxInit.DMA_BufferSize = 1;
+	gstRxInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
+	gstRxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
+	gstRxInit.DMA_Priority = DMA_Priority_High;
+	DMA_Init(SPI1_RX_DMA_CH, &gstRxInit);
 
 	// TX Setup
-	DMA_InitTypeDef stTxInit;
-	DMA_StructInit(&stTxInit);
-	stTxInit.DMA_DIR = DMA_DIR_PeripheralDST;
-	stTxInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	stTxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
-	stTxInit.DMA_Priority = DMA_Priority_High;
-	DMA_Init(SPI1_TX_DMA_CH, &stTxInit);
+	DMA_StructInit(&gstTxInit);
+	gstTxInit.DMA_MemoryBaseAddr = 1;
+	gstTxInit.DMA_BufferSize = 1;
+	gstTxInit.DMA_DIR = DMA_DIR_PeripheralDST;
+	gstTxInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
+	gstTxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
+	gstTxInit.DMA_Priority = DMA_Priority_High;
+	DMA_Init(SPI1_TX_DMA_CH, &gstTxInit);
 }
 
 void SPI1_Init()
@@ -95,9 +89,12 @@ void SPI1_Init()
 	SPI_StructInit(&stInitSpi);
 	stInitSpi.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_16;
 	stInitSpi.SPI_Mode = SPI_Mode_Master;
-	stInitSpi.SPI_DataSize = SPI_DataSize_16b;
+	stInitSpi.SPI_DataSize = SPI_DataSize_8b;
 	stInitSpi.SPI_NSS = SPI_NSS_Soft;
 
 	SPI_Init(SPI1, &stInitSpi);
+#if 1
+	SPI1_DMA_Init();
+#endif
 	SPI_Cmd(SPI1, ENABLE);
 }

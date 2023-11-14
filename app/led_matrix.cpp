@@ -1,4 +1,5 @@
 #include <stm32f10x_gpio.h>
+#include <stdio.h>
 #include "types.h"
 #include "config.h"
 #include "macro.h"
@@ -26,50 +27,70 @@ uint8 gnDspCh = 'A';
 #define TEST_DISPLAY_ADDR (0x0F)
 #define TEST_DISPLAY_VAL  (0x00)
 
-void SendTwo(uint8 nHigh, uint8 nLow)
+void SendMulti(uint8* pRxBuf, uint8* pTxBuf, uint16 nBytes)
 {
 	HW_SPI_CS_LOW();
-	SPI1_Tx(((uint16)nHigh << 8) | nLow);
+#if 1
+	SPI1_DmaTx(pRxBuf, pTxBuf, nBytes);
+#else
+	for (int i = 0; i < nBytes; i++)
+	{
+		pRxBuf[i] = SPI1_Tx(pTxBuf[i]);
+	}
+#endif
 	HW_SPI_CS_HIGH();
 }
 
 void Matrix_Init()
 {
-	SendTwo(DECODE_MODE_ADDR, DECODE_MODE_VAL);
-	SendTwo(INTENSITY_ADDR, INTENSITY_VAL);
-	SendTwo(SCAN_LIMIT_ADDR, SCAN_LIMIT_VAL);
-	SendTwo(POWER_DOWN_MODE_ADDR, POWER_DOWN_MODE_VAR);
-	SendTwo(TEST_DISPLAY_ADDR, TEST_DISPLAY_VAL);
+	uint8 anInitPat[][2] =
+	{
+		{DECODE_MODE_ADDR, DECODE_MODE_VAL},
+		{INTENSITY_ADDR, INTENSITY_VAL},
+		{SCAN_LIMIT_ADDR, SCAN_LIMIT_VAL},
+		{POWER_DOWN_MODE_ADDR, POWER_DOWN_MODE_VAR},
+		{TEST_DISPLAY_ADDR, TEST_DISPLAY_VAL},
+	};
+	uint8 anRxBuf[10];
+
+	uint32 nLoop = sizeof(anInitPat) / 2;
+	for (int i = 0; i < nLoop; i++)
+	{
+		SendMulti(anRxBuf, anInitPat[i], 2);
+	}
 }
 
 void refreshMat(uint8* pFrame)
 {
-#if 1
 	uint8 anTx[16];
 	for (int i = 0; i < 8; i++)
 	{
-		anTx[i * 2 + 1] = 8 - i;
-		anTx[i * 2] = pFrame[i];
+		anTx[i * 2] = 8 - i;
+		anTx[i * 2 + 1] = pFrame[i];
 	}
-#if 1
-	SPI1_DmaTx(anTx, sizeof(anTx));
-#else
-	uint16* aPtr = (uint16*)anTx;
-	for (int i = 0; i < 8; i++)
-	{
-		HW_SPI_CS_LOW();
-		SPI1_Tx(*aPtr);
-		HW_SPI_CS_HIGH();
-		aPtr++;
-	}
-#endif
 
-#else
+	uint8 anRx[16];
 	for (int i = 0; i < 8; i++)
 	{
-		SendTwo(8 - i, pFrame[i]);
-	}
+		anRx[0] = 0xCC;
+		SendMulti(anRx, anTx + (2 * i), 2);
+#if 1
+		char anBuf[20];
+		sprintf(anBuf, "%X, %X -> %X %X\n",
+			anTx[2 * i], anTx[2 * i + 1],
+			anRx[0], anRx[1]);
+		CLI_Puts(anBuf);
 #endif
+	}
+
+#if 0
+	CLI_Printf("T: %d\n", (int)10);
+#elif 0
+	CLI_Puts("TT\n");
+#else
+	//	CLI_Puts("TT--FF--FF--\n");
+#endif
+	OS_Idle(OS_MSEC(10));
 }
 
 void ledmat_Run(void* pParam)
@@ -87,30 +108,20 @@ void ledmat_Run(void* pParam)
 
 	uint8 nCnt = 0;
 	uint8* aDsp = gaFont8x8[0];
-
+	uint8 anIntensity[2] = { INTENSITY_ADDR , 0 };
+	uint8 anDummy[2];
 	while (1)
 	{
-#if 0
-		uint16 nCntMod = nCnt % 64;
-		uint16 nCol = nCntMod % 8;
-		uint16 nRow = nCntMod / 8;
-		if (aDsp[nCol] & BIT(nRow))
-		{
-			BIT_CLR(aDsp[nCol], BIT(nRow));
-		}
-		else
-		{
-			BIT_SET(aDsp[nCol], BIT(nRow));
-		}
-		nCnt++;
-#endif
 		OS_Lock(BIT(LOCK_SPI1));
+
 		refreshMat(aDsp);
-		SendTwo(INTENSITY_ADDR, nCnt / 2);
+		anIntensity[1] = nCnt / 2;
+		SendMulti(anDummy, anIntensity, 2);
+
 		OS_Unlock(BIT(LOCK_SPI1));
 
 		aDsp = gaFont8x8[gnDspCh];
-		OS_Wait(0, OS_MSEC(100));
+		OS_Wait(0, OS_MSEC(1000));
 		nCnt++;
 		if (nCnt >= 8 * 2)
 		{
