@@ -23,4 +23,4 @@
 #define SPI1_TX_DMA_CH			DMA1_Channel3
 
 #define LED_MAT_PORT			GPIOA
-#define LED_MAT_CS				GPIO_Pin_4    // NSS PIN
+#define LED_MAT_CS				GPIO_Pin_4

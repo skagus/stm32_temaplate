@@ -10,14 +10,14 @@
 DMA_InitTypeDef gstTxInit;
 DMA_InitTypeDef gstRxInit;
 
-uint16 SPI1_Tx(uint16 nData)
+uint8 SPI1_Tx(uint8 nData)
 {
 	/* Send SPIy data */
 	SPI_I2S_SendData(SPI1, nData);
 	/* Wait for SPIy Tx buffer empty */
 	while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_BSY) == SET);
 
-	uint16 nRcv = SPI_I2S_ReceiveData(SPI1);
+	uint8 nRcv = SPI_I2S_ReceiveData(SPI1);
 
 	return nRcv;
 }

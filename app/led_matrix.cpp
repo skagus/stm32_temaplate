@@ -8,38 +8,41 @@
 #include "drv_spi1.h"
 #include "led_matrix.h"
 
-#define EN_NSS_PIN						(0)	// Not working..
-
 extern uint8 gaFont8x8[128][8];
 uint8 gnDspCh = 'A';
 
-#define HW_SPI_CS_LOW()       GPIO_ResetBits(SPI1_PORT, LED_MAT_CS)
-#define HW_SPI_CS_HIGH()      GPIO_SetBits(SPI1_PORT, LED_MAT_CS)
+#define HW_SPI_CS_LOW()				GPIO_ResetBits(SPI1_PORT, LED_MAT_CS)
+#define HW_SPI_CS_HIGH()			GPIO_SetBits(SPI1_PORT, LED_MAT_CS)
 
-#define DECODE_MODE_ADDR  (0x09)
-#define DECODE_MODE_VAL   (0x00) // No decode.
-#define INTENSITY_ADDR    (0x0A)
-#define INTENSITY_VAL     (0x00) // Bright Setting (0x00 ~ 0x0F)
-#define SCAN_LIMIT_ADDR   (0x0B)
-#define SCAN_LIMIT_VAL    (0x07) // How many use digit led (line count in matrix led device)
-#define POWER_DOWN_MODE_ADDR  (0x0C)
-#define POWER_DOWN_MODE_VAR   (0x01) // Normal Op.(0x01)
-#define TEST_DISPLAY_ADDR (0x0F)
-#define TEST_DISPLAY_VAL  (0x00)
+#define DECODE_MODE_ADDR			(0x09)
+#define DECODE_MODE_VAL				(0x00) // No decode.
+#define INTENSITY_ADDR				(0x0A)
+#define INTENSITY_VAL				(0x00) // Bright Setting (0x00 ~ 0x0F)
+#define SCAN_LIMIT_ADDR				(0x0B)
+#define SCAN_LIMIT_VAL				(0x07) // How many use digit led (line count in matrix led device)
+#define POWER_DOWN_MODE_ADDR		(0x0C)
+#define POWER_DOWN_MODE_VAR			(0x01) // Normal Op.(0x01)
+#define TEST_DISPLAY_ADDR			(0x0F)
+#define TEST_DISPLAY_VAL			(0x00)
 
 void SendMulti(uint8* pRxBuf, uint8* pTxBuf, uint16 nBytes)
 {
 	HW_SPI_CS_LOW();
-#if 1
-	SPI1_DmaTx(pRxBuf, pTxBuf, nBytes);
-#else
-	for (int i = 0; i < nBytes; i++)
+	if (nBytes >= 8)
 	{
-		pRxBuf[i] = SPI1_Tx(pTxBuf[i]);
+		SPI1_DmaTx(pRxBuf, pTxBuf, nBytes);
 	}
-#endif
+	else
+	{
+		for (int i = 0; i < nBytes; i++)
+		{
+			pRxBuf[i] = SPI1_Tx(pTxBuf[i]);
+		}
+	}
 	HW_SPI_CS_HIGH();
 }
+
+
 
 void Matrix_Init()
 {
@@ -154,7 +157,6 @@ static uint32 _aStk[SIZE_STK + 1];
 void LEDMat_Init()
 {
 	SPI1_Init();
-
 
 	CLI_Register((const char*)"ledmat", ledmat_CmdDisp);
 
