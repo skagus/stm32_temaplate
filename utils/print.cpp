@@ -66,6 +66,49 @@ void UT_Flush()
 	}
 }
 
+void UT_DumpData(uint8* aInData, uint32 nByte, uint8 nWidth)
+{
+	switch (nWidth)
+	{
+	case 1:
+	{
+		uint8* aData = aInData;
+		for (uint32 nIdx = 0; nIdx < nByte; nIdx++)
+		{
+			UT_Flush();
+			if (0 == (nIdx % 32)) UT_Printf("\n");
+			UT_Printf("%02X ", aData[nIdx]);
+		}
+		UT_Printf("\n");
+		break;
+	}
+	case 2:
+	{
+		uint16* aData = (uint16*)aInData;
+		for (uint32 nIdx = 0; nIdx < nByte / 2; nIdx++)
+		{
+			UT_Flush();
+			if (0 == (nIdx % 16)) UT_Printf("\n");
+			UT_Printf("%04X ", aData[nIdx]);
+		}
+		UT_Printf("\n");
+		break;
+	}
+	case 4:
+	{
+		uint32* aData = (uint32*)aInData;
+		for (uint32 nIdx = 0; nIdx < nByte / 4; nIdx++)
+		{
+			UT_Flush();
+			if (0 == (nIdx % 8)) UT_Printf("\n");
+			UT_Printf("%08X ", aData[nIdx]);
+		}
+		UT_Printf("\n");
+		break;
+	}
+	}
+}
+
 void UT_InitPrint()
 {
 	UART_Config();

@@ -386,7 +386,7 @@ void sf_Cmd(uint8 argc, char* argv[])
 			uint32 nThis = nByte > PAGE_SIZE ? PAGE_SIZE : nByte;
 			FLASH_Read(aBuf, nAddr, nThis);
 			UT_Printf("Read: %X, %d\n", nAddr, nThis);
-			// UT_DumpData(aBuf, nThis);
+			UT_DumpData(aBuf, nThis, 4);
 			nAddr += nThis;
 			nByte -= nThis;
 		}
