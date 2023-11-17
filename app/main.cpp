@@ -10,6 +10,7 @@
 #include "cli.h"
 #include "led.h"
 #include "led_matrix.h"
+#include "spi_flash.h"
 
 #define UNUSED(x)			(void)(x)
 
@@ -46,6 +47,7 @@ FORCE_C int main(void)
 	LED_Init();
 	SPI1_Init();
 	LEDMat_Init();
+	SF_Init();
 
 	__enable_irq();
 	gnCntBoot++;

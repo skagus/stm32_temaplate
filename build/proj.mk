@@ -57,14 +57,15 @@ CSRC =	\
 		cmsis/debug_cm3.c
 
 CPPSRC = \
-		utils/os.cpp \
-		drv/drv_uart.cpp \
+		app/spi_flash.cpp \
 		app/font.cpp \
 		app/cli.cpp \
 		app/led.cpp \
 		app/tick.cpp \
 		app/led_matrix.cpp \
 		app/main.cpp \
+		drv/drv_uart.cpp \
+		utils/os.cpp \
 		utils/print_queue.cpp
 
 ASRC =
