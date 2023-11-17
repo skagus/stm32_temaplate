@@ -14,7 +14,8 @@ uint8 gaRxBuf[UART_RX_BUF_LEN];
 
 PrintBuf gstTxBuf;
 
-void _UART_DMA_Tx();
+//void _UART_DMA_Tx();
+void _DmaTx();
 
 FORCE_C void DMA1_Channel5_IRQHandler(void)
 {
@@ -41,7 +42,7 @@ FORCE_C void DMA1_Channel4_IRQHandler(void)
 		DMA_ClearFlag(DMA1_FLAG_TC4);
 		gstTxBuf.PQ_UpdateDelPtr();
 		gbTxRun = 0;
-		UART_DmaTx();
+		_DmaTx();
 	}
 	OS_AsyncEvt(BIT(EVT_UART_TX));
 }
@@ -161,7 +162,7 @@ void _DMA_Rx_Config()
 #endif
 }
 
-void UART_DmaTx()
+void _DmaTx()
 {
 	if (0 == gbTxRun)
 	{
@@ -217,7 +218,7 @@ void UART_PushWriteBuf(uint32 nLen)
 {
 	__disable_irq();
 	gstTxBuf.PQ_UpdateAddPtr(nLen);
-	UART_DmaTx();
+	_DmaTx();
 	__enable_irq();
 }
 

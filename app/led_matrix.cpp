@@ -4,6 +4,7 @@
 #include "config.h"
 #include "macro.h"
 #include "os.h"
+#include "print.h"
 #include "cli.h"
 #include "drv_spi1.h"
 #include "led_matrix.h"
@@ -77,11 +78,11 @@ void refreshMat(uint8* pFrame)
 	}
 
 #if 0
-	CLI_Printf("T: %d\n", (int)10);
+	UT_Printf("T: %d\n", (int)10);
 #elif 0
-	CLI_Puts("TT\n");
+	UT_Puts("TT\n");
 #else
-	//	CLI_Puts("TT--FF--FF--\n");
+	//	UT_Puts("TT--FF--FF--\n");
 #endif
 	OS_Idle(OS_MSEC(10));
 }
@@ -128,8 +129,8 @@ void ledmat_CmdDisp(uint8 argc, char* argv[])
 	}
 	else
 	{
-		CLI_Printf("%s Display Char in LED matrix\r\n", argv[0]);
-		CLI_Printf("\t$> %s <char> : Set display char\r\n", argv[0]);
+		UT_Printf("%s Display Char in LED matrix\r\n", argv[0]);
+		UT_Printf("\t$> %s <char> : Set display char\r\n", argv[0]);
 	}
 }
 

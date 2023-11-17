@@ -66,6 +66,7 @@ CPPSRC = \
 		app/main.cpp \
 		drv/drv_uart.cpp \
 		utils/os.cpp \
+		utils/print.cpp \
 		utils/print_queue.cpp
 
 ASRC =

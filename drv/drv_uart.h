@@ -8,7 +8,6 @@ extern PrintBuf gstTxBuf;
 
 void UART_DmaConfig();
 void UART_Config();
-void UART_DmaTx();
 
 uint8* UART_GetWriteBuf(uint32* pLen);
 void UART_PushWriteBuf(uint32 nLen);

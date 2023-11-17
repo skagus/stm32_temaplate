@@ -1,5 +1,3 @@
-#include <stdarg.h>
-#include <stdio.h>
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #include <stm32f10x_usart.h>
@@ -9,10 +7,11 @@
 #include "misc.h"
 #include "types.h"
 #include "macro.h"
+#include "drv_uart.h"
+#include "print.h"
 #include "os.h"
 #include "led_matrix.h"
 #include "cli.h"
-#include "drv_uart.h"
 
 /**
  DMA 사용 전략.
@@ -49,65 +48,6 @@ CmdInfo gaCmds[MAX_CMD_COUNT];
 uint8 gnCmds;
 
 
-void cli_PutCh(uint8 nCh)
-{
-	uint32 nBufLen;
-	uint8* pBuf;
-
-	while (true)
-	{
-		pBuf = UART_GetWriteBuf(&nBufLen);
-		if (nullptr == pBuf)
-		{
-			CLI_Flush();
-			continue;
-		}
-		break;
-	}
-
-	*pBuf = nCh;
-	UART_PushWriteBuf(1);
-}
-
-
-int CLI_Puts(const char* szStr)
-{
-	uint32 nBufLen;
-	uint8* pBuf = UART_GetWriteBuf(&nBufLen);
-
-	uint32 nStrLen = strlen(szStr);
-	uint32 nCpyLen = MIN(nStrLen, nBufLen);
-
-	memcpy(pBuf, szStr, nCpyLen);
-
-	UART_PushWriteBuf(nCpyLen);
-	return nCpyLen;
-}
-
-
-int CLI_Printf(const char* szFmt, ...)
-{
-	uint32 nBufLen;
-	uint8* pBuf = UART_GetWriteBuf(&nBufLen);
-
-	int nUsedLen;
-	va_list stVA;
-	va_start(stVA, szFmt);
-	nUsedLen = vsnprintf((char*)pBuf, nBufLen, szFmt, stVA);
-	va_end(stVA);
-
-	UART_PushWriteBuf(nUsedLen);
-	return nUsedLen;
-}
-
-void CLI_Flush()
-{
-	while (UART_CountTxFree() < 128)
-	{
-		OS_Wait(BIT(EVT_UART_TX), OS_MSEC(10));
-	}
-}
-
 /**
  * CMD runner.
 */
@@ -116,15 +56,15 @@ void cli_CmdHelp(uint8 argc, char* argv[])
 	if (argc > 1)
 	{
 		uint32 nNum = CLI_GetInt(argv[1]);
-		CLI_Printf("help with %08lx\r\n", nNum);
+		UT_Printf("help with %08lx\r\n", nNum);
 		char* aCh = (char*)&nNum;
-		CLI_Printf("help with %02X %02X %02X %02X\r\n", aCh[0], aCh[1], aCh[2], aCh[3]);
+		UT_Printf("help with %02X %02X %02X %02X\r\n", aCh[0], aCh[1], aCh[2], aCh[3]);
 	}
 	else
 	{
 		for (uint8 nIdx = 0; nIdx < gnCmds; nIdx++)
 		{
-			CLI_Printf("%d: %s\r\n", nIdx, gaCmds[nIdx].szCmd);
+			UT_Printf("%d: %s\r\n", nIdx, gaCmds[nIdx].szCmd);
 		}
 	}
 }
@@ -154,7 +94,7 @@ void cli_RunCmd(char* szCmdLine)
 	}
 	if (false == bExecute)
 	{
-		CLI_Printf("Unknown command: %s\r\n", szCmdLine);
+		UT_Printf("Unknown command: %s\r\n", szCmdLine);
 	}
 }
 
@@ -202,7 +142,7 @@ void cli_Run(void* pParam)
 		{
 			if (' ' <= nCh && nCh <= '~') // ASCII. normal.
 			{
-				cli_PutCh(nCh);
+				UT_PutCh(nCh);
 				aLine[nLen] = nCh;
 				nLen++;
 			}
@@ -211,23 +151,23 @@ void cli_Run(void* pParam)
 				if (nLen > 0)
 				{
 					aLine[nLen] = 0;
-					CLI_Puts("\r\n");
+					UT_Puts("\r\n");
 					cli_RunCmd(aLine);
 					nLen = 0;
 				}
-				CLI_Puts("\r\n$> ");
+				UT_Puts("\r\n$> ");
 			}
-			else if (0x7F == nCh) // backspace.
+			else if ((0x7F == nCh) || (0x08 == nCh)) // delete, backspace 
 			{
 				if (nLen > 0)
 				{
-					CLI_Puts("\b \b");
+					UT_Puts("\b \b");
 					nLen--;
 				}
 			}
 			else
 			{
-				CLI_Printf("~ %X\r\n", nCh);
+				UT_Printf("~ %X\r\n", nCh);
 			}
 		}
 		OS_Wait(BIT(EVT_UART_RX), 0);
@@ -239,8 +179,7 @@ static uint32 _aStk[SIZE_STK + 1];
 
 void CLI_Init()
 {
-	UART_Config();
-	UART_DmaConfig();
+	UT_InitPrint();
 
 	CLI_Register("help", cli_CmdHelp);
 	OS_CreateTask(cli_Run, _aStk + SIZE_STK, NULL, "Con");

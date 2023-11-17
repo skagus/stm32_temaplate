@@ -5,6 +5,7 @@
 #include "version.h"
 #include "macro.h"
 #include "os.h"
+#include "print.h"
 #include "drv_spi1.h"
 #include "tick.h"
 #include "cli.h"
@@ -51,7 +52,7 @@ FORCE_C int main(void)
 
 	__enable_irq();
 	gnCntBoot++;
-	CLI_Printf("VER: %s, %X th Boot\n", VERSION, gnCntBoot);
+	UT_Printf("VER: %s, %X th Boot\n", VERSION, gnCntBoot);
 
 	OS_Start();
 

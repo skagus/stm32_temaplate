@@ -2,6 +2,7 @@
 #include <stm32f10x_gpio.h>
 #include "config.h"
 #include "macro.h"
+#include "print.h"
 #include "os.h"
 #include "drv_spi1.h"
 #include "cli.h"
@@ -20,7 +21,7 @@
 
 #define SIZE_BUF			(16)
 
-#define DBG(...)			CLI_Printf(__VA_ARGS__)
+#define DBG(...)			UT_Printf(__VA_ARGS__)
 
 #define SF_ENABLE()			{OS_Lock(BIT(LOCK_SPI1));GPIO_ResetBits(FLASH_PORT, FLASH_CS);}
 #define SF_DISABLE()		{GPIO_SetBits(FLASH_PORT, FLASH_CS);OS_Unlock(BIT(LOCK_SPI1));}
@@ -339,12 +340,12 @@ bool _ProcRead(uint8* pBuf, uint32* pnBytes, YMState eStep, void* pParam)
 
 void _printUsage(void)
 {
-	CLI_Printf("\ti - show flash ID\n");
-	CLI_Printf("\te <Addr> <Size> - Erase flash\n");
-	CLI_Printf("\tr <Addr> <Size> - Read flash and show\n");
-	CLI_Printf("\tf <Addr> <Size> [Pat=0xAA] - Fill flash with pattern\n");
-	CLI_Printf("\tW <Addr> - Write received data (user Ymodem)\n");
-	CLI_Printf("\tR <Addr> <Size> - Read flash and send it via Ymodem\n");
+	UT_Printf("\ti - show flash ID\n");
+	UT_Printf("\te <Addr> <Size> - Erase flash\n");
+	UT_Printf("\tr <Addr> <Size> - Read flash and show\n");
+	UT_Printf("\tf <Addr> <Size> [Pat=0xAA] - Fill flash with pattern\n");
+	UT_Printf("\tW <Addr> - Write received data (user Ymodem)\n");
+	UT_Printf("\tR <Addr> <Size> - Read flash and send it via Ymodem\n");
 }
 
 void sf_Cmd(uint8 argc, char* argv[])
@@ -374,17 +375,17 @@ void sf_Cmd(uint8 argc, char* argv[])
 	if (nCmd == 'i')
 	{
 		uint32 nId = _ReadId();
-		CLI_Printf("FLASH ID: %X\n", nId);
+		UT_Printf("FLASH ID: %X\n", nId);
 	}
 	else if (nCmd == 'r' && argc >= 4) // r 8
 	{
 		nAddr = ALIGN_DN(nAddr, PAGE_SIZE);
-		CLI_Printf("Flash Read: %X, %d\n", nAddr, nByte);
+		UT_Printf("Flash Read: %X, %d\n", nAddr, nByte);
 		while (nByte > 0)
 		{
 			uint32 nThis = nByte > PAGE_SIZE ? PAGE_SIZE : nByte;
 			FLASH_Read(aBuf, nAddr, nThis);
-			CLI_Printf("Read: %X, %d\n", nAddr, nThis);
+			UT_Printf("Read: %X, %d\n", nAddr, nThis);
 			// UT_DumpData(aBuf, nThis);
 			nAddr += nThis;
 			nByte -= nThis;
@@ -395,12 +396,12 @@ void sf_Cmd(uint8 argc, char* argv[])
 		uint8 nVal = (argc < 5) ? 0xAA : CLI_GetInt(argv[4]);
 
 		memset(aBuf, nVal, PAGE_SIZE);
-		CLI_Printf("FLASH Write: %X, %d, %X\n", nAddr, nByte, nVal);
+		UT_Printf("FLASH Write: %X, %d, %X\n", nAddr, nByte, nVal);
 		while (nByte > 0)
 		{
 			uint32 nThis = nByte > PAGE_SIZE ? PAGE_SIZE : nByte;
 			uint8 nRet = FLASH_Write(aBuf, nAddr, nThis);
-			CLI_Printf("Page Write: %X, %d --> %X\n", nAddr, nThis, nRet);
+			UT_Printf("Page Write: %X, %d --> %X\n", nAddr, nThis, nRet);
 			nAddr += PAGE_SIZE;
 			nByte -= PAGE_SIZE;
 		}
@@ -408,7 +409,7 @@ void sf_Cmd(uint8 argc, char* argv[])
 	else if (nCmd == 'e' && argc >= 4) //
 	{
 		uint8 nRet = FLASH_Erase(nAddr, nByte);
-		CLI_Printf("FLASH Erase: %X, %d --> %X\n", nAddr, nByte, nRet);
+		UT_Printf("FLASH Erase: %X, %d --> %X\n", nAddr, nByte, nRet);
 	}
 #if 0
 	else if (nCmd == 'W' && argc >= 3) // Write with Y modem.
@@ -423,7 +424,7 @@ void sf_Cmd(uint8 argc, char* argv[])
 		gYParam.nByte = nByte;
 		YReq stReq = { bReq:true, bRx : false, pfHandle : _ProcRead, pParam : (void*)&gYParam };
 		YM_Request(&stReq);
-}
+	}
 #endif
 	else
 	{
