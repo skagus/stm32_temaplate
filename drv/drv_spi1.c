@@ -10,7 +10,7 @@
 DMA_InitTypeDef gstTxInit;
 DMA_InitTypeDef gstRxInit;
 
-uint8 SPI1_Tx(uint8 nData)
+uint8 SPI1_IO(uint8 nData)
 {
 	/* Send SPIy data */
 	SPI_I2S_SendData(SPI1, nData);
@@ -22,14 +22,17 @@ uint8 SPI1_Tx(uint8 nData)
 	return nRcv;
 }
 
-void SPI1_DmaTx(uint8* pRx, uint8* pTx, uint16_t nLen)
+
+void _DmaTrigger(uint8* pRx, uint8* pTx, uint16_t nLen, uint32 bTx, uint32 bRx)
 {
 	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Rx | SPI_I2S_DMAReq_Tx, ENABLE);
 
+	gstTxInit.DMA_MemoryInc = bTx ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
 	gstTxInit.DMA_MemoryBaseAddr = (uint32)pTx;
 	gstTxInit.DMA_BufferSize = nLen;
 	DMA_Init(SPI1_TX_DMA_CH, &gstTxInit);
 
+	gstRxInit.DMA_MemoryInc = bRx ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
 	gstRxInit.DMA_MemoryBaseAddr = (uint32)pRx;
 	gstRxInit.DMA_BufferSize = nLen;
 	DMA_Init(SPI1_RX_DMA_CH, &gstRxInit);
@@ -47,6 +50,22 @@ void SPI1_DmaTx(uint8* pRx, uint8* pTx, uint16_t nLen)
 	DMA_Cmd(SPI1_RX_DMA_CH, DISABLE);
 	DMA_Cmd(SPI1_TX_DMA_CH, DISABLE);
 	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Rx | SPI_I2S_DMAReq_Tx, DISABLE);
+}
+
+uint8 gnTmp;
+void SPI1_DmaOut(uint8* pTx, uint16_t nLen)
+{
+	_DmaTrigger(&gnTmp, pTx, nLen, 0, 1);
+}
+
+void SPI1_DmaIn(uint8* pRx, uint16_t nLen)
+{
+	_DmaTrigger(pRx, &gnTmp, nLen, 1, 0);
+}
+
+void SPI1_DmaIO(uint8* pRx, uint8* pTx, uint16_t nLen)
+{
+	_DmaTrigger(pRx, pTx, nLen, 1, 1);
 }
 
 void SPI1_DMA_Init()

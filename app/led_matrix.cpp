@@ -25,18 +25,18 @@ uint8 gnDspCh = 'A';
 #define TEST_DISPLAY_ADDR			(0x0F)
 #define TEST_DISPLAY_VAL			(0x00)
 
-void SendMulti(uint8* pRxBuf, uint8* pTxBuf, uint16 nBytes)
+void SendMulti(uint8* pTxBuf, uint16 nBytes)
 {
 	HW_SPI_CS_LOW();
 	if (nBytes >= 8)
 	{
-		SPI1_DmaTx(pRxBuf, pTxBuf, nBytes);
+		SPI1_DmaOut(pTxBuf, nBytes);
 	}
 	else
 	{
 		for (int i = 0; i < nBytes; i++)
 		{
-			pRxBuf[i] = SPI1_Tx(pTxBuf[i]);
+			SPI1_IO(pTxBuf[i]);
 		}
 	}
 	HW_SPI_CS_HIGH();
@@ -54,12 +54,11 @@ void Matrix_Init()
 		{POWER_DOWN_MODE_ADDR, POWER_DOWN_MODE_VAR},
 		{TEST_DISPLAY_ADDR, TEST_DISPLAY_VAL},
 	};
-	uint8 anRxBuf[10];
 
 	uint32 nLoop = sizeof(anInitPat) / 2;
 	for (int i = 0; i < nLoop; i++)
 	{
-		SendMulti(anRxBuf, anInitPat[i], 2);
+		SendMulti(anInitPat[i], 2);
 	}
 }
 
@@ -72,18 +71,9 @@ void refreshMat(uint8* pFrame)
 		anTx[i * 2 + 1] = pFrame[i];
 	}
 
-	uint8 anRx[16];
 	for (int i = 0; i < 8; i++)
 	{
-		anRx[0] = 0xCC;
-		SendMulti(anRx, anTx + (2 * i), 2);
-#if 1
-		char anBuf[20];
-		sprintf(anBuf, "%X, %X -> %X %X\n",
-			anTx[2 * i], anTx[2 * i + 1],
-			anRx[0], anRx[1]);
-		CLI_Puts(anBuf);
-#endif
+		SendMulti(anTx + (2 * i), 2);
 	}
 
 #if 0
@@ -98,13 +88,6 @@ void refreshMat(uint8* pFrame)
 
 void ledmat_Run(void* pParam)
 {
-	GPIO_InitTypeDef stGpioInit;
-	GPIO_SetBits(LED_MAT_PORT, LED_MAT_CS);
-	stGpioInit.GPIO_Pin = LED_MAT_CS;
-	stGpioInit.GPIO_Speed = GPIO_Speed_50MHz;
-	stGpioInit.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(LED_MAT_PORT, &stGpioInit);
-
 	OS_Lock(BIT(LOCK_SPI1));
 	Matrix_Init();
 	OS_Unlock(BIT(LOCK_SPI1));
@@ -112,14 +95,13 @@ void ledmat_Run(void* pParam)
 	uint8 nCnt = 0;
 	uint8* aDsp = gaFont8x8[0];
 	uint8 anIntensity[2] = { INTENSITY_ADDR , 0 };
-	uint8 anDummy[2];
 	while (1)
 	{
 		OS_Lock(BIT(LOCK_SPI1));
 
 		refreshMat(aDsp);
 		anIntensity[1] = nCnt / 2;
-		SendMulti(anDummy, anIntensity, 2);
+		SendMulti(anIntensity, 2);
 
 		OS_Unlock(BIT(LOCK_SPI1));
 
@@ -156,7 +138,12 @@ static uint32 _aStk[SIZE_STK + 1];
 
 void LEDMat_Init()
 {
-	SPI1_Init();
+	GPIO_InitTypeDef stGpioInit;
+	GPIO_SetBits(LED_MAT_PORT, LED_MAT_CS);
+	stGpioInit.GPIO_Pin = LED_MAT_CS;
+	stGpioInit.GPIO_Speed = GPIO_Speed_50MHz;
+	stGpioInit.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(LED_MAT_PORT, &stGpioInit);
 
 	CLI_Register((const char*)"ledmat", ledmat_CmdDisp);
 

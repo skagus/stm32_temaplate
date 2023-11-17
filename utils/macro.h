@@ -35,7 +35,6 @@
 #define UNUSED(x)					(void)(x)
 
 #define IF_THEN(cond, check)		ASSERT(NOT(exp) || (check))
-#define DIV_CEIL(val, mod)			(((val) + (mod) - 1) / (mod))
 
 #define STATIC_ASSERT(exp, str)		static_assert(exp, str);
 
@@ -51,6 +50,12 @@
 #define MEMSET_OBJ(obj, val)		memset((void*)&(obj), val, sizeof(obj))
 #define MEMSET_ARRAY(arr, val)		memset((void*)(arr), val, sizeof(arr))
 #define MEMSET_PTR(ptr, val)		memset((void*)(ptr), val, sizeof(*ptr))
+
+#define DIV_UP(nNum, nAlign)		(((nNum) + (nAlign) - 1) / (nAlign))
+#define DIV_DN(nNum, nAlign)		((nNum) / (nAlign))
+
+#define ALIGN_UP(nNum, nAlign)		(DIV_UP(nNum, nAlign) * (nAlign))
+#define ALIGN_DN(nNum, nAlign)		(DIV_DN(nNum, nAlign) * (nAlign))
 
 #define MIN(x, y)					((x) > (y)) ? (y) : (x)
 #define MAX(x, y)					((x) > (y)) ? (x) : (y)

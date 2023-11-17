@@ -5,6 +5,7 @@
 #include "version.h"
 #include "macro.h"
 #include "os.h"
+#include "drv_spi1.h"
 #include "tick.h"
 #include "cli.h"
 #include "led.h"
@@ -43,6 +44,7 @@ FORCE_C int main(void)
 
 	CLI_Init();
 	LED_Init();
+	SPI1_Init();
 	LEDMat_Init();
 
 	__enable_irq();
