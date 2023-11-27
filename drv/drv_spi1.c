@@ -1,4 +1,5 @@
 
+#include <string.h>
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_spi.h>
 #include <stm32f10x_gpio.h>
@@ -23,49 +24,78 @@ uint8 SPI1_IO(uint8 nData)
 }
 
 
-void _DmaTrigger(uint8* pRx, uint8* pTx, uint16_t nLen, uint32 bTx, uint32 bRx)
+static uint8 saDummy[8];
+void _DmaTrigger(uint8* pRx, uint8* pTx, uint16_t nLen)
 {
-	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Rx | SPI_I2S_DMAReq_Tx, ENABLE);
-
-	gstTxInit.DMA_MemoryInc = bTx ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
-	gstTxInit.DMA_MemoryBaseAddr = (uint32)pTx;
-	gstTxInit.DMA_BufferSize = nLen;
+	SPI_Cmd(SPI1, DISABLE);
+	if (NULL != pTx)
+	{
+		//	gstTxInit.DMA_MemoryInc = bTx ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
+		gstTxInit.DMA_Mode = DMA_Mode_Normal;
+		gstTxInit.DMA_MemoryBaseAddr = (uint32)pTx;
+		gstTxInit.DMA_BufferSize = nLen;
+	}
+	else
+	{
+		memset(saDummy, 0x00, sizeof(saDummy));
+		gstTxInit.DMA_Mode = DMA_Mode_Circular;
+		gstTxInit.DMA_MemoryBaseAddr = (uint32)saDummy;
+		gstTxInit.DMA_BufferSize = 8;
+	}
 	DMA_Init(SPI1_TX_DMA_CH, &gstTxInit);
 
-	gstRxInit.DMA_MemoryInc = bRx ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
-	gstRxInit.DMA_MemoryBaseAddr = (uint32)pRx;
-	gstRxInit.DMA_BufferSize = nLen;
+	//	gstRxInit.DMA_MemoryInc = bRx ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
+	if (NULL != pRx)
+	{
+		gstRxInit.DMA_Mode = DMA_Mode_Normal;
+		gstRxInit.DMA_MemoryBaseAddr = (uint32)pRx;
+		gstRxInit.DMA_BufferSize = nLen;
+	}
+	else
+	{
+		memset(saDummy, 0x00, sizeof(saDummy));
+		gstRxInit.DMA_Mode = DMA_Mode_Circular;
+		gstRxInit.DMA_MemoryBaseAddr = (uint32)saDummy;
+		gstRxInit.DMA_BufferSize = 8;
+	}
 	DMA_Init(SPI1_RX_DMA_CH, &gstRxInit);
 
 	/* Enable SPI Rx/Tx DMA Request*/
-	DMA_Cmd(SPI1_RX_DMA_CH, ENABLE);
 	DMA_Cmd(SPI1_TX_DMA_CH, ENABLE);
+	DMA_Cmd(SPI1_RX_DMA_CH, ENABLE);
+
+	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Rx | SPI_I2S_DMAReq_Tx, ENABLE);
+	SPI_Cmd(SPI1, ENABLE);
+
 
 	/* Waiting for the end of Data Transfer */
-	while (DMA_GetFlagStatus(DMA1_FLAG_TC2) == RESET);
-	while (DMA_GetFlagStatus(DMA1_FLAG_TC3) == RESET);
+	while (DMA_GetFlagStatus(DMA1_FLAG_TC2) == RESET); // DMA1 Channel 2.
+	while (DMA_GetFlagStatus(DMA1_FLAG_TC3) == RESET); // DMA1 Channel 3.
 
-	DMA_ClearFlag(DMA1_FLAG_TC2 | DMA1_FLAG_TC3);
+	DMA_ClearFlag(0xF << 4); // GL2 | TC2 | HT2 | TE2
+	DMA_ClearFlag(0xF << 8); // GL3 | TC3 | HT3 | TE3
+	//	DMA_ClearFlag(DMA1_FLAG_TC2 | DMA1_FLAG_TC3);
+	SPI_Cmd(SPI1, DISABLE);
 
 	DMA_Cmd(SPI1_RX_DMA_CH, DISABLE);
 	DMA_Cmd(SPI1_TX_DMA_CH, DISABLE);
 	SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Rx | SPI_I2S_DMAReq_Tx, DISABLE);
+	SPI_Cmd(SPI1, ENABLE);
 }
 
-uint8 gnTmp;
 void SPI1_DmaOut(uint8* pTx, uint16_t nLen)
 {
-	_DmaTrigger(&gnTmp, pTx, nLen, 0, 1);
+	_DmaTrigger(NULL, pTx, nLen);
 }
 
 void SPI1_DmaIn(uint8* pRx, uint16_t nLen)
 {
-	_DmaTrigger(pRx, &gnTmp, nLen, 1, 0);
+	_DmaTrigger(pRx, NULL, nLen);
 }
 
 void SPI1_DmaIO(uint8* pRx, uint8* pTx, uint16_t nLen)
 {
-	_DmaTrigger(pRx, pTx, nLen, 1, 1);
+	_DmaTrigger(pRx, pTx, nLen);
 }
 
 void SPI1_DMA_Init()
@@ -77,7 +107,7 @@ void SPI1_DMA_Init()
 	gstRxInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	gstRxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
 	gstRxInit.DMA_Priority = DMA_Priority_High;
-	DMA_Init(SPI1_RX_DMA_CH, &gstRxInit);
+	//	DMA_Init(SPI1_RX_DMA_CH, &gstRxInit);
 
 	// TX Setup
 	DMA_StructInit(&gstTxInit);
@@ -87,7 +117,7 @@ void SPI1_DMA_Init()
 	gstTxInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	gstTxInit.DMA_PeripheralBaseAddr = (uint32_t)(&(SPI1->DR));
 	gstTxInit.DMA_Priority = DMA_Priority_High;
-	DMA_Init(SPI1_TX_DMA_CH, &gstTxInit);
+	//	DMA_Init(SPI1_TX_DMA_CH, &gstTxInit);
 }
 
 void SPI1_Init()

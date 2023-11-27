@@ -8,16 +8,38 @@
 #include "cli.h"
 #include "spi_flash.h"
 
-#define CMD_READ			0x03
-#define CMD_ERASE			0x20
-#define CMD_PGM				0x02
-#define CMD_WREN			0x06
-#define CMD_READWRSR		0x01
-#define CMD_READRDSR		0x05
-#define CMD_READ_PROT		0x3C
-#define CMD_UNPROTECT		0x39
-#define CMD_PROTECT			0x36
-#define CMD_READID			0x9F
+#define CMD_READ			0x03	// [03:Ah:Am:Al:(Data 계속)]
+#define CMD_FAST_READ		0x0B	// [03:Ah:Am:Al:Dummy:(Data 계속)]
+
+#define CMD_ERASE_PAGE		0x20	// Sector(4KB) Erase [20:Ah:Am:Al]
+#define CMD_ERASE_32K		0x52	// 32KB Block Erase [52:Ah:Am:Al]
+#define CMD_ERASE_64K		0xD8	// 64KB Block Erase [D8:Ah:Am:Al]
+#define CMD_ERASE_CHIP		0xC7	// Chip Erase [C7], 0x60 command도 가능.
+#define CMD_PGM_PAGE		0x02	// Page Pgm [02:Ah:Am:Al:(Data 256B)]
+
+#define CMD_EN_WR			0x06	// Write enable [06]
+#define CMD_DIS_WR			0x04	// Write disable [04]
+#define CMD_WR_SR			0x01	// Write status reg  [01:Status1:Status2]
+#define CMD_RD_SR1			0x05	// Read status reg 1 [05:(Status1 계속)~]
+#define CMD_RD_SR2			0x35	// Read status reg 2 [35:(Status2 계속)~] : Status2는 2 bit만 valid.
+
+#define CMD_RD_UID			0x4B	// Read Unique ID [90:dummy(4B):(UID:8B)]
+#define CMD_RD_JEDEC		0x9F	// Read JEDEC ID. [9F:(Manu ID):(Mem Type):(Capacity)]
+
+/**
+* Status 1:
+	[7] SRP0 : Status Register Protect 0 (non-volatile)
+	[6] SEC : Sector protect (non-volatile)
+	[5] TB : Top/Bottom write protect (non-volatile)
+	[4] BP2 : Block protection bit. (non-volatile)
+	[3] BP1 : Block protection bit. (non-volatile)
+	[2] BP0 : Block protection bit. (non-volatile)
+	[1] WEL : Write enable latch.
+	[0] BUSY : Erase/Program in progress.
+* Status 2:
+	[1] QE: Quad enable.
+	[0] SRP1 : Status register protect 1
+*/
 
 #define SIZE_BUF			(16)
 
@@ -27,8 +49,9 @@
 #define SF_DISABLE()		{GPIO_SetBits(FLASH_PORT, FLASH_CS);OS_Unlock(BIT(LOCK_SPI1));}
 
 
-void sf_Read(uint8* pRxBuf, uint16 nBytes)
+void spi_Read(uint8* pRxBuf, uint16 nBytes)
 {
+	memset(pRxBuf, 0xCC, nBytes);
 	if (nBytes >= 8)
 	{
 		SPI1_DmaIn(pRxBuf, nBytes);
@@ -42,7 +65,7 @@ void sf_Read(uint8* pRxBuf, uint16 nBytes)
 	}
 }
 
-void sf_Write(uint8* pTxBuf, uint16 nBytes)
+void spi_Write(uint8* pTxBuf, uint16 nBytes)
 {
 	if (nBytes >= 8)
 	{
@@ -57,9 +80,8 @@ void sf_Write(uint8* pTxBuf, uint16 nBytes)
 	}
 }
 
-void sf_ReadWrite(uint8* pRxBuf, uint8* pTxBuf, uint16 nBytes)
+void spi_ReadWrite(uint8* pRxBuf, uint8* pTxBuf, uint16 nBytes)
 {
-	SF_ENABLE();
 	if (nBytes >= 8)
 	{
 		SPI1_DmaIO(pRxBuf, pTxBuf, nBytes);
@@ -71,32 +93,31 @@ void sf_ReadWrite(uint8* pRxBuf, uint8* pTxBuf, uint16 nBytes)
 			pRxBuf[i] = SPI1_IO(pTxBuf[i]);
 		}
 	}
-	SF_DISABLE();
 }
 
-
-inline void _IssueCmd(uint8* aCmds, uint8 nLen)
-{
-	SF_ENABLE();
-	sf_Write(aCmds, nLen);
-	SF_DISABLE();
-}
-
+/**
+ * The WEL bit must be set prior to every
+ * Page Program,
+ * Sector/Block/Chip Erase,
+ * Write Status Register
+ *
+ * Update command가 끝나면, Write disable로 자동 전환.
+*/
 inline void _WriteEnable(void)
 {
-	uint8 nCmd = CMD_WREN;
-	_IssueCmd(&nCmd, 1);
+	uint8 nCmd = CMD_EN_WR;
+	spi_Write(&nCmd, 1);
 }
 
 inline uint8 _WaitBusy(void)
 {
-	uint8 nCmd = CMD_READRDSR;
+	uint8 nCmd = CMD_RD_SR1;
 	uint8 nResp = 0;
 	SF_ENABLE();
+	spi_Write(&nCmd, 1);
 	while (1)
 	{
-		sf_Write(&nCmd, 1);
-		sf_Read(&nResp, 1);
+		spi_Read(&nResp, 1);
 		if (0 == (nResp & 0x01)) // check busy.
 		{
 			break;
@@ -106,99 +127,116 @@ inline uint8 _WaitBusy(void)
 	return nResp;
 }
 
-
-uint32 _ReadId(void)
+// Need write enable.
+void _WriteStatus(uint8 nStatus1, uint8 nStatus2)
 {
-	uint8 anCmd[4] = { CMD_READID,0,0,0 };
+	uint8 anCmd[3];
+	anCmd[0] = CMD_WR_SR;
+	anCmd[1] = nStatus1;
+	anCmd[2] = nStatus2;
+	spi_Write(anCmd, 3);
+}
+
+void sf_General(uint8* aInData, uint16 nInByte, uint8* aOutData, uint16 nOutByte)
+{
 	SF_ENABLE();
-	sf_Write(anCmd, 1);
-	sf_Read(anCmd, 4);
+	spi_Write(aInData, nInByte);
+	if (nOutByte > 0)
+	{
+		spi_Read(aOutData, nOutByte);
+	}
+	SF_DISABLE();
+}
+
+uint32 sf_ReadId(void)
+{
+	uint8 anCmd[4] = { CMD_RD_JEDEC,0,0,0 };
+	SF_ENABLE();
+	spi_Write(anCmd, 1);
+	spi_Read(anCmd, 4);
 	SF_DISABLE();
 	return *(uint32*)anCmd;
 }
 
-void _WriteStatus(void)
+void sf_UpdateStatus(uint8* aStatus)
 {
-	uint8 anCmd[2];
-	anCmd[0] = CMD_READWRSR;
-	anCmd[1] = 0;
-	_IssueCmd(anCmd, 2);
-}
-
-void _UnProtect(uint32 nAddr)
-{
-	uint8 anCmd[4];
-	anCmd[0] = CMD_UNPROTECT;
-	anCmd[1] = (nAddr >> 16) & 0xFF;
-	anCmd[2] = (nAddr >> 8) & 0xFF;
-	anCmd[3] = nAddr & 0xFF;
-	_WriteEnable();
-	_IssueCmd(anCmd, 4);
-}
-
-void _Protect(uint32 nAddr)
-{
-	uint8 anCmd[4];
-	anCmd[0] = CMD_PROTECT;
-	anCmd[1] = (nAddr >> 16) & 0xFF;
-	anCmd[2] = (nAddr >> 8) & 0xFF;
-	anCmd[3] = nAddr & 0xFF;
-	_WriteEnable();
-	_IssueCmd(anCmd, 4);
-}
-
-uint8 _ReadProt(uint32 nAddr)
-{
-	uint8 nResp;
-	uint8 anCmd[4];
-	anCmd[0] = CMD_READ_PROT;
-	anCmd[1] = (nAddr >> 16) & 0xFF;
-	anCmd[2] = (nAddr >> 8) & 0xFF;
-	anCmd[3] = nAddr & 0xFF;
-
+	uint8 nCmd = CMD_RD_SR1;
+	uint8 nSt1 = 0;
 	SF_ENABLE();
-	sf_Write(anCmd, 4);
-	sf_Read(&nResp, 1);
+	spi_Write(&nCmd, 1);
+	spi_Read(&nSt1, 1);
 	SF_DISABLE();
 
-	return nResp;
+	nCmd = CMD_RD_SR2;
+	uint8 nSt2 = 0;
+	uint8 nResp = 0;
+	SF_ENABLE();
+	spi_Write(&nCmd, 1);
+	spi_Read(&nSt2, 1);
+	SF_DISABLE();
+
+	UT_Printf("Org Status: %X %X\n", nSt1, nSt2);
+	if (nullptr != aStatus)
+	{
+		uint8 anCmd[3];
+		anCmd[0] = CMD_WR_SR;
+		anCmd[1] = aStatus[0];
+		anCmd[2] = aStatus[1];
+
+		SF_ENABLE();
+		_WriteEnable();
+		SF_DISABLE();
+
+		SF_ENABLE();
+		spi_Write(anCmd, 3);
+		SF_DISABLE();
+	}
 }
 
-
-uint8 _Erase(uint32 nSAddr)
+/**
+ * TB, BP2, BP1, BP0 모두 문제 없어야 erase됨.
+*/
+uint8 sf_Erase(uint32 nSAddr)
 {
 	DBG("E:%X ", nSAddr);
 
 	uint32 nAddr = ALIGN_UP(nSAddr, SECT_SIZE);
-	uint8 anCmd[4] = { CMD_ERASE, };
+	uint8 anCmd[4] = { CMD_ERASE_PAGE, };
 	anCmd[1] = (nAddr >> 16) & 0xFF;
 	anCmd[2] = (nAddr >> 8) & 0xFF;
 	anCmd[3] = nAddr & 0xFF;
 
-	_UnProtect(nAddr);
+	SF_ENABLE();
 	_WriteEnable();
-	_IssueCmd(anCmd, 4);
+	SF_DISABLE(); // CS high needed just after comman seq.
+
+	SF_ENABLE();
+	spi_Write(anCmd, 4);
+	SF_DISABLE(); // CS high needed just after comman seq.
+
 	uint8 nRet = _WaitBusy();
 	DBG("->%X\n", nRet);
 	return nRet;
 }
 
 
-uint8 _Write(uint8* pBuf, uint32 nAddr, uint32 nByte)
+uint8 sf_Write(uint8* pBuf, uint32 nAddr, uint32 nByte)
 {
 	DBG("W:%X,%d ", nAddr, nByte);
 
 	uint8 anCmd[4];
-	anCmd[0] = CMD_PGM;
+	anCmd[0] = CMD_PGM_PAGE;
 	anCmd[1] = (nAddr >> 16) & 0xFF;
 	anCmd[2] = (nAddr >> 8) & 0xFF;
 	anCmd[3] = nAddr & 0xFF;
 
-	_UnProtect(nAddr);
-	_WriteEnable();
 	SF_ENABLE();
-	sf_Write(anCmd, 4);
-	sf_Read(pBuf, nByte);
+	_WriteEnable();
+	SF_DISABLE();
+
+	SF_ENABLE();
+	spi_Write(anCmd, 4);
+	spi_Write(pBuf, nByte);
 	SF_DISABLE();
 
 	uint8 nRet = _WaitBusy();
@@ -206,7 +244,7 @@ uint8 _Write(uint8* pBuf, uint32 nAddr, uint32 nByte)
 	return nRet;
 }
 
-void _Read(uint8* pBuf, uint32 nAddr, uint32 nByte)
+void sf_Read(uint8* pBuf, uint32 nAddr, uint32 nByte)
 {
 	DBG("R:%X,%d\n", nAddr, nByte);
 
@@ -217,8 +255,8 @@ void _Read(uint8* pBuf, uint32 nAddr, uint32 nByte)
 	anCmd[3] = nAddr & 0xFF;
 
 	SF_ENABLE();
-	sf_Write(anCmd, 4);
-	sf_Read(pBuf, nByte);
+	spi_Write(anCmd, 4);
+	spi_Read(pBuf, nByte);
 	SF_DISABLE();
 }
 
@@ -230,7 +268,7 @@ void FLASH_Read(uint8* pBuf, uint32 nSAddr, uint32 nInLen)
 	if (nLen > nRest) nLen = nRest;
 	while (nRest > 0)
 	{
-		_Read(pBuf, nAddr, nLen);
+		sf_Read(pBuf, nAddr, nLen);
 		pBuf += nLen;
 		nAddr += nLen;
 		nRest -= nLen;
@@ -249,10 +287,10 @@ uint8 FLASH_Write(uint8* pBuf, uint32 nSAddr, uint32 nInLen)
 	{
 		if (0 == (nAddr % SECT_SIZE))
 		{
-			nRet = _Erase(nAddr);
+			nRet = sf_Erase(nAddr);
 		}
 		OS_Idle(OS_MSEC(100));
-		nRet = _Write(pBuf, nAddr, nLen);
+		nRet = sf_Write(pBuf, nAddr, nLen);
 		pBuf += nLen;
 		nAddr += nLen;
 		nRest -= nLen;
@@ -268,7 +306,7 @@ uint8 FLASH_Erase(uint32 nSAddr, uint32 nLen)
 	uint32 nEAddr = ALIGN_DN(nSAddr + nLen, SECT_SIZE);
 	while (nAddr < nEAddr)
 	{
-		nRet = _Erase(nAddr);
+		nRet = sf_Erase(nAddr);
 		nAddr += SECT_SIZE;
 	}
 	return nRet;
@@ -341,11 +379,13 @@ bool _ProcRead(uint8* pBuf, uint32* pnBytes, YMState eStep, void* pParam)
 void _printUsage(void)
 {
 	UT_Printf("\ti - show flash ID\n");
+	UT_Printf("\tx <in size> <in data> <out size> - Do some command.\n");
+	UT_Printf("\ts <Status 1> <Status 2> - Write status\n");
 	UT_Printf("\te <Addr> <Size> - Erase flash\n");
 	UT_Printf("\tr <Addr> <Size> - Read flash and show\n");
 	UT_Printf("\tf <Addr> <Size> [Pat=0xAA] - Fill flash with pattern\n");
-	UT_Printf("\tW <Addr> - Write received data (user Ymodem)\n");
-	UT_Printf("\tR <Addr> <Size> - Read flash and send it via Ymodem\n");
+	//	UT_Printf("\tW <Addr> - Write received data (user Ymodem)\n");
+	//	UT_Printf("\tR <Addr> <Size> - Read flash and send it via Ymodem\n");
 }
 
 void sf_Cmd(uint8 argc, char* argv[])
@@ -363,22 +403,38 @@ void sf_Cmd(uint8 argc, char* argv[])
 	uint32 nAddr = 0;
 	uint32 nByte = 0;
 
-	if (argc >= 3)
-	{
-		nAddr = CLI_GetInt(argv[2]);
-	}
-	if (argc >= 4)
-	{
-		nByte = CLI_GetInt(argv[3]);
-	}
-
 	if (nCmd == 'i')
 	{
-		uint32 nId = _ReadId();
+		uint32 nId = sf_ReadId();
 		UT_Printf("FLASH ID: %X\n", nId);
+	}
+	else if (nCmd == 'x' && argc == 5)
+	{
+		uint8 nInByte = CLI_GetInt(argv[2]);
+		uint32 nInData = CLI_GetInt(argv[3]);
+		uint8 nOutByte = CLI_GetInt(argv[4]);
+		uint8 aOutData[128];
+		sf_General((uint8*)&nInData, nInByte, aOutData, nOutByte);
+		UT_DumpData(aOutData, nOutByte, 1);
+	}
+	else if (nCmd == 's')
+	{
+		if (3 == argc) // status 1,2
+		{
+			uint8 aNew[2];
+			aNew[0] = (uint8)CLI_GetInt(argv[1]);
+			aNew[1] = (uint8)CLI_GetInt(argv[2]);
+			sf_UpdateStatus(aNew);
+		}
+		else
+		{
+			sf_UpdateStatus(nullptr);
+		}
 	}
 	else if (nCmd == 'r' && argc >= 4) // r 8
 	{
+		nAddr = CLI_GetInt(argv[2]);
+		nByte = CLI_GetInt(argv[3]);
 		nAddr = ALIGN_DN(nAddr, PAGE_SIZE);
 		UT_Printf("Flash Read: %X, %d\n", nAddr, nByte);
 		while (nByte > 0)
@@ -393,6 +449,8 @@ void sf_Cmd(uint8 argc, char* argv[])
 	}
 	else if (nCmd == 'f' && argc >= 4) // cmd w addr byte
 	{
+		nAddr = CLI_GetInt(argv[2]);
+		nByte = CLI_GetInt(argv[3]);
 		uint8 nVal = (argc < 5) ? 0xAA : CLI_GetInt(argv[4]);
 
 		memset(aBuf, nVal, PAGE_SIZE);
@@ -408,18 +466,23 @@ void sf_Cmd(uint8 argc, char* argv[])
 	}
 	else if (nCmd == 'e' && argc >= 4) //
 	{
+		nAddr = CLI_GetInt(argv[2]);
+		nByte = CLI_GetInt(argv[3]);
 		uint8 nRet = FLASH_Erase(nAddr, nByte);
 		UT_Printf("FLASH Erase: %X, %d --> %X\n", nAddr, nByte, nRet);
 	}
 #if 0
 	else if (nCmd == 'W' && argc >= 3) // Write with Y modem.
 	{
+		nAddr = CLI_GetInt(argv[2]);
 		gYParam.nAddr = nAddr;
 		YReq stReq = { bReq:true, bRx : true, pfHandle : _ProcWrite, pParam : (void*)&gYParam };
 		YM_Request(&stReq);
 	}
 	else if (nCmd == 'R' && argc >= 4) // Write with Y modem.
 	{
+		nAddr = CLI_GetInt(argv[2]);
+		nByte = CLI_GetInt(argv[3]);
 		gYParam.nAddr = nAddr;
 		gYParam.nByte = nByte;
 		YReq stReq = { bReq:true, bRx : false, pfHandle : _ProcRead, pParam : (void*)&gYParam };

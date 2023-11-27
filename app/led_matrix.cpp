@@ -29,6 +29,11 @@ uint8 gnDspCh = 'A';
 void SendMulti(uint8* pTxBuf, uint16 nBytes)
 {
 	HW_SPI_CS_LOW();
+#if 0
+	//	SPI1_DmaOut(pTxBuf, nBytes);
+	uint8 pRxBuf[128];
+	SPI1_DmaIO(pRxBuf, pTxBuf, nBytes);
+#else
 	if (nBytes >= 8)
 	{
 		SPI1_DmaOut(pTxBuf, nBytes);
@@ -40,6 +45,7 @@ void SendMulti(uint8* pTxBuf, uint16 nBytes)
 			SPI1_IO(pTxBuf[i]);
 		}
 	}
+#endif
 	HW_SPI_CS_HIGH();
 }
 
