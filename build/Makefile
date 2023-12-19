@@ -1,280 +1,84 @@
-include proj.mk
 
-ifeq ($(BUILD_PRINT), TRUE)
-	ECHO = 
-else
-	ECHO = @
-endif
+################ Top configuration.
+PRJ_TOP = ..
+OBJDIR = out
+TARGET = $(OBJDIR)/templ
+
+OPTI = -O0
 MCU = cortex-m3
 
-################ Generated Files ##############
-VER_FILE = version.h
-GEN_LDS = $(TARGET).lds
+VER_STRING := $$(date +%Y%m%d_%H%M%S)_$(OPTI)
 
-################ Object ##############
-OBJ =	$(CSRC:%.c=$(OBJDIR)/%.c.o) \
-		$(CPPSRC:%.cpp=$(OBJDIR)/%.p.o) \
-		$(ASRC:%.S=$(OBJDIR)/%.s.o) \
-		$(DATA:%.bin=$(OBJDIR)/%.b.o)
+BUILD_STRICT = FALSE
+BUILD_PRINT = FALSE
 
-LST =	$(OBJ:%.o=%.lst)
+LINK_SCRIPT = startup/stm32f100.ld
 
-DEP =	$(OBJ:%.o=%.d)
+################  Define
+DEFINE = -DCPP_EXIST
+# STM32F103C8T6 <-- MD performance.
+DEFINE += -DSTM32F10X_MD
+DEFINE += -DUSE_STDPERIPH_DRIVER
+DEFINE += -DUSE_FULL_ASSERT # ONLY for debug.
+DEFINE += -DHSE_VALUE=8000000
 
-LIB_OPT =	$(patsubst %,-L$(PRJ_TOP)/%,$(PRJ_LIB_DIR)) \
-			$(patsubst %,-L%,$(EXT_LIB_DIR)) \
-			$(patsubst %,-l%,$(LIB_FILE))
+################  Include.
+# Add relative path from $(PRJ_TOP)
+PRJ_INC = . \
+		drv \
+		cmsis \
+		std_lib \
+		app \
+		utils \
+		startup
 
-INCLUDE =	$(patsubst %,-I$(PRJ_TOP)/%,$(PRJ_INC)) \
-			$(patsubst %,-I%,$(EXT_INC))
+# Add absolue path. (ex. c:/lib/inc)
+EXT_INC =
 
-################  Common Options for C, C++, ASM
-DEP_FLAGS = -MMD -MP # dependancy generation.
+################  Library directory.
+# Add relative path from $(PRJ_TOP)
+PRJ_LIB_DIR =
 
-#  -g*:          generate debugging information
-#  -O*:          optimization level
-#  -f...:        tuning, see GCC manual and avr-libc documentation
-#  -Wall...:     warning level
-#  -Wa,...:      tell GCC to pass this to the assembler.
-#    -adhlns...: create assembler listing
-FLAGS  = -mcpu=$(MCU)
-#FLAGS += -mthumb
-FLAGS += -Wa,-adhlns=$(@:.o=.lst) # .o file assembly.
-FLAGS += -gdwarf-2 # debug format: dwarf-2
+# Add absolute path. (ex. c:/lib/)
+EXT_LIB_DIR = 
 
-## Optimize ##
-FLAGS += $(OPTI)
+LIB_FILE =
 
-## compiler configuration ##
-FLAGS += -funsigned-char
-FLAGS += -funsigned-bitfields
-FLAGS += -fshort-enums
-FLAGS += -fmessage-length=0 # error message in a line (w/o wrap)
-FLAGS += -ffunction-sections
-FLAGS += -fdata-sections 
-#FLAGS += -fpack-struct  # CAUTION: RISC-V can't handle un-aligned load/save.
-#FLAGS += -msave-restore 
-#FLAGS += -fno-unit-at-a-time
-#FLAGS += -mshort-calls
-FLAGS += --specs=nano.specs
-FLAGS += -mfloat-abi=soft
-## WARNING ##
-FLAGS += -Wcomment # enable warning for cascade comment.
-FLAGS += -Wunreachable-code
-ifeq ($(BUILD_STRICT),TRUE)
-	FLAGS += -Wall
-	FLAGS += -Wextra
-	FLAGS += -Wstrict-prototypes
-	#CFLAGS += -Wundef # for undefined macro evaluation
-endif
+################ source files ##############
+# Source file들은 project TOP 에서의 위치를 나타낸다.
+CSRC =	\
+		drv/drv_spi1.c \
+		std_lib/stm32f10x_usart.c \
+		std_lib/stm32f10x_rcc.c \
+		std_lib/stm32f10x_gpio.c \
+		std_lib/stm32f10x_dma.c \
+		std_lib/stm32f10x_spi.c \
+		std_lib/misc.c \
+		startup/startup_stm32f10x.c \
+		cmsis/system_stm32f10x.c \
+		cmsis/debug_cm3.c
 
-################  C Options
-CFLAGS  = $(FLAGS)
-CFLAGS += -std=gnu11 # c89, c99, gnu89, gnu99
-CFLAGS += -fstack-usage  # show stack usage for each function.
-CFLAGS += -fcallgraph-info  # make call graph information.
-CFLAGS += $(DEP_OPT)
-CFLAGS += $(DEFINE)
-CFLAGS += $(INCLUDE)
-#CFLAGS += -fdump-tree-optimized #
-#CFLAGS += -fdump-rtl-dfinish  # 
-################  C++ Options
-CPPFLAGS  = $(FLAGS)
-CPPFLAGS += -std=gnu++14
-CPPFLAGS += -fstack-usage  # show stack usage for each function.
-CPPFLAGS += -fcallgraph-info  # make call graph information.
-CPPFLAGS += -fno-exceptions
-CPPFLAGS += -fno-rtti
-CPPFLAGS += -fno-use-cxa-atexit
-CPPFLAGS += $(DEP_OPT)
-CPPFLAGS += $(DEFINE)
-CPPFLAGS += $(INCLUDE)
+CPPSRC = \
+		app/spi_flash.cpp \
+		app/font.cpp \
+		app/cli.cpp \
+		app/led.cpp \
+		app/tick.cpp \
+		app/led_matrix.cpp \
+		app/main.cpp \
+		drv/drv_uart.cpp \
+		utils/os.cpp \
+		utils/print.cpp \
+		utils/print_queue.cpp
 
-################  Assembler Options
-#  -Wa,...:   tell GCC to pass this to the assembler.
-#  -gstabs:   have the assembler create line number information; note that
-#             for use in COFF files, additional information about filenames
-#             and function names needs to be present in the assembler source
-#             files -- see avr-libc docs [FIXME: not yet described there]
-#  -listing-cont-lines: Sets the maximum number of continuation lines of hex 
-#       dump that will be displayed for a given single line of source input.
-ASFLAGS  = $(FLAGS)
-#ASFLAGS += -Wa,-gstabs,--listing-cont-lines=100
-ASFLAGS += $(DEP_OPT)
-ASFLAGS += $(DEFINE)
-ASFLAGS += $(INCLUDE)
-ASFLAGS += -x assembler-with-cpp 
+ASRC =
 
-################  Linker Options
-#  -Wl,...:     tell GCC to pass this to linker.
-#    -Map:      create map file
-#    --cref:    add cross reference to  map file
-LDS_OPT = -T $(GEN_LDS)
-#LDS_OPT = $(patsubst %, -T $(PRJ_TOP)/%, $(LINK_SCRIPT))
+DATA =
 
-LDFLAGS = -g
-LDFLAGS += -mcpu=$(MCU)
-LDFLAGS += $(OPTI)
-LDFLAGS += $(LDS_OPT)
-LDFLAGS += $(LIB_OPT)
-LDFLAGS += -Xlinker -Map=$(TARGET).map
-LDFLAGS += -Xlinker --cref
-#LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS += --specs=nosys.specs
-LDFLAGS += -nostartfiles
-LDFLAGS += --specs=nano.specs
-#LDFLAGS += -nodefaultlibs
-#LDFLAGS += -nolibc
-#LDFLAGS += -nostdlib
-LDFLAGS += -Xlinker --gc-sections
-LDFLAGS += -Xlinker --print-memory-usage
-#LDFLAGS += -mcmodel=medany
-#LDFLAGS += -msmall-data-limit=8
-LDFLAGS += -fmessage-length=0
-LDFLAGS += -mfloat-abi=soft
-
-################### Action #################
-CC 		= $(GNU_PREFIX)gcc
-CPP 	= $(GNU_PREFIX)g++
-OBJCOPY	= $(GNU_PREFIX)objcopy
-OBJDUMP	= $(GNU_PREFIX)objdump
-SIZE	= $(GNU_PREFIX)size
-AR		= $(GNU_PREFIX)ar rcs
-NM		= $(GNU_PREFIX)nm
-GDB		= $(GNU_PREFIX)gdb
-
-SHELL = sh
-REMOVE = rm -f
-REMOVEDIR = rm -rf
-COPY = cp
-
-INFO 	= @echo Making: $@
-DIR_CHK = @mkdir -p $(@D)
-
-################ Object file
-$(OBJDIR)/%.b.o : $(PRJ_TOP)/%.bin
-	$(INFO)
-	$(DIR_CHK)
-	$(OBJCOPY) -I binary -O elf32 $< $@
-
-$(OBJDIR)/%.c.o : $(PRJ_TOP)/%.c
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(CC) -c $(CFLAGS) $(DEP_FLAGS) $< -o $@ 
-
-$(OBJDIR)/%.p.o : $(PRJ_TOP)/%.cpp
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(CPP) -c $(CPPFLAGS) $(DEP_FLAGS) $< -o $@ 
-
-$(OBJDIR)/%.s.o : $(PRJ_TOP)/%.S
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(CC) -c $(ASFLAGS) $(DEP_FLAGS) $< -o $@
-
-################### File Creation #################
+########## TARGET #############
 all: elf bin lst hex size
 
-relink: clean_link all
+test:
+	echo $(VER_STRING)
 
-$(GEN_LDS): $(PRJ_TOP)/$(LINK_SCRIPT)
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(CC) -E -P -x c $(CFLAGS) $< > $@
-
-$(PRJ_TOP)/$(VER_FILE): Makefile
-	$(INFO)
-	@echo "#define VERSION		\"$(VER_STRING)\" > $(PRJ_TOP)/$(VER_FILE)
-
-%.elf: $(OBJ) $(GEN_LDS)
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(CC) $(LDFLAGS) $(OBJ) $(LIB_OPT) -o $@ 
-
-%.hex: %.elf
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(OBJCOPY) -O ihex $< $@
-
-%.bin: %.elf
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(OBJCOPY) -O binary $< $@
-
-%.lss: %.elf
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(OBJDUMP) -h -S -z -w $< > $@
-
-%.sym: %.elf
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(NM) -S -l -n --format=sysv $< > $@
-
-%.a: $(OBJ)
-	$(INFO)
-	$(DIR_CHK)
-	$(ECHO)$(AR) $@ $^
-
-################ Actions.
-TARGET_ALL=	$(TARGET).elf $(TARGET).a \
-			$(TARGET).hex $(TARGET).bin \
-			$(TARGET).lss $(TARGET).sym $(TARGET).map
-
-version:
-	@echo "#define VERSION		\"$(VER_STRING)\"" > $(PRJ_TOP)/$(VER_FILE)
-
-obj: $(OBJ)
-lib: $(TARGET).a
-elf: $(TARGET).elf
-bin: $(TARGET).bin $(TARGET).hex
-lst: $(TARGET).lss $(TARGET).sym
-
-size: $(TARGET).elf
-	$(INFO) $(OPTI)
-	@$(SIZE) --format=gnu $<
-	@$(SIZE) --format=gnu $< > $(TARGET).size
-	@$(SIZE) --format=sysv --radix=16 --common $< >> $(TARGET).size
-
-prog: $(TARGET).hex
-	st-link_cli -P $(TARGET).hex -Rst
-#	stm32_isp.exe stm32_conf.ini
-
-run:
-	st-link_cli -Rst
-
-gdb: $(TARGET).elf
-	$(GDB) $<
-# Display compiler version information.
-gccversion : 
-	$(ECHO)$(CC) --version
-
-conf :
-	@echo PREFIX : $(GNU_PREFIX)
-	@echo ------------------------ Flags ------------------------
-	@echo CFLAGS : $(CFLAGS)
-	@echo LDFLAGS: $(LDFLAGS)
-	@echo ASFLAGS: $(ASFLAGS)
-	@echo LD FILE: $(LINK_SCRIPT)
-	@echo ------------------------ Files ------------------------
-	@echo ASM Files : $(ASMSRC)
-	@echo C Files   : $(CSRC)
-	@echo C++ Files : $(CPPSRC)
-
-clean: clean_link
-	$(REMOVEDIR) $(OBJDIR)
-
-clean_link:
-	$(REMOVE) $(TARGET).elf $(TARGET).a \
-			$(TARGET).hex $(TARGET).bin \
-			$(TARGET).lss $(TARGET).sym \
-			$(TARGET).map $(TARGET).size \
-			$(TARGET).lds
-
-# Include the dependency files.
--include $(patsubst %.c,$(OBJDIR)/%.c.d,$(CSRC))
--include $(patsubst %.cpp,$(OBJDIR)/%.p.d,$(CPPSRC))
--include $(patsubst %.S,$(OBJDIR)/%.S.d,$(ASRC))
-
-# Listing of phony targets.
-.PHONY : all obj elf bin hex lst size gccversion clean version
+include rules.mk
