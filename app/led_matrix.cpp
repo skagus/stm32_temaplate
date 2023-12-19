@@ -95,6 +95,7 @@ void refreshMat(uint8* pFrame)
 
 void ledmat_Run(void* pParam)
 {
+	OS_Wait(0, OS_MSEC(1000));
 	OS_Lock(BIT(LOCK_SPI1));
 	Matrix_Init();
 	OS_Unlock(BIT(LOCK_SPI1));

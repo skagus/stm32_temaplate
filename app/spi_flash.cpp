@@ -41,13 +41,10 @@
 	[0] SRP1 : Status register protect 1
 */
 
-#define SIZE_BUF			(16)
-
 #define DBG(...)			UT_Printf(__VA_ARGS__)
 
 #define SF_ENABLE()			{OS_Lock(BIT(LOCK_SPI1));GPIO_ResetBits(FLASH_PORT, FLASH_CS);}
 #define SF_DISABLE()		{GPIO_SetBits(FLASH_PORT, FLASH_CS);OS_Unlock(BIT(LOCK_SPI1));}
-
 
 void spi_Read(uint8* pRxBuf, uint16 nBytes)
 {
@@ -493,7 +490,7 @@ void sf_Cmd(uint8 argc, char* argv[])
 	{
 		_printUsage();
 	}
-}
+	}
 
 void SF_Init()
 {
@@ -506,6 +503,5 @@ void SF_Init()
 
 	// Init SPI if ... 
 	CLI_Register((const char*)"sf", sf_Cmd);
-
 }
 
