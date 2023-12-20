@@ -7,7 +7,7 @@ TARGET = $(OBJDIR)/templ
 OPTI = -O0
 MCU = cortex-m3
 
-VER_STRING := $$(date +%Y%m%d_%H%M%S)_$(OPTI)
+VER_STRING := $$(date_time)_$(OPTI)
 
 BUILD_STRICT = FALSE
 BUILD_PRINT = FALSE
@@ -15,12 +15,14 @@ BUILD_PRINT = FALSE
 LINK_SCRIPT = startup/stm32f100.ld
 
 ################  Define
-DEFINE = -DCPP_EXIST
+DEFINE = \
+	CPP_EXIST \
+	STM32F10X_MD \
+	USE_STDPERIPH_DRIVER \
+	USE_FULL_ASSERT \
+	HSE_VALUE=8000000
+
 # STM32F103C8T6 <-- MD performance.
-DEFINE += -DSTM32F10X_MD
-DEFINE += -DUSE_STDPERIPH_DRIVER
-DEFINE += -DUSE_FULL_ASSERT # ONLY for debug.
-DEFINE += -DHSE_VALUE=8000000
 
 ################  Include.
 # Add relative path from $(PRJ_TOP)
@@ -80,5 +82,16 @@ all: elf bin lst hex size
 
 test:
 	echo $(VER_STRING)
+
+prog: $(TARGET).hex
+	st-link_cli -P $(TARGET).hex -Rst
+#	stm32_isp.exe stm32_conf.ini
+
+run:
+	st-link_cli -Rst
+
+gdb: $(TARGET).elf
+	$(GDB) $<
+
 
 include rules.mk

@@ -19,6 +19,8 @@ LST =	$(OBJ:%.o=%.lst)
 
 DEP =	$(OBJ:%.o=%.d)
 
+DEF_OPT = $(patsubst %,-D%,$(DEFINE))
+
 LIB_OPT =	$(patsubst %,-L$(PRJ_TOP)/%,$(PRJ_LIB_DIR)) \
 			$(patsubst %,-L%,$(EXT_LIB_DIR)) \
 			$(patsubst %,-l%,$(LIB_FILE))
@@ -26,15 +28,9 @@ LIB_OPT =	$(patsubst %,-L$(PRJ_TOP)/%,$(PRJ_LIB_DIR)) \
 INCLUDE =	$(patsubst %,-I$(PRJ_TOP)/%,$(PRJ_INC)) \
 			$(patsubst %,-I%,$(EXT_INC))
 
-################  Common Options for C, C++, ASM
 DEP_FLAGS = -MMD -MP # dependancy generation.
 
-#  -g*:          generate debugging information
-#  -O*:          optimization level
-#  -f...:        tuning, see GCC manual and avr-libc documentation
-#  -Wall...:     warning level
-#  -Wa,...:      tell GCC to pass this to the assembler.
-#    -adhlns...: create assembler listing
+################  Common Options for C, C++, ASM
 FLAGS  = -mcpu=$(MCU)
 #FLAGS += -mthumb
 FLAGS += -Wa,-adhlns=$(@:.o=.lst) # .o file assembly.
@@ -72,7 +68,7 @@ CFLAGS += -std=gnu11 # c89, c99, gnu89, gnu99
 CFLAGS += -fstack-usage  # show stack usage for each function.
 CFLAGS += -fcallgraph-info  # make call graph information.
 CFLAGS += $(DEP_OPT)
-CFLAGS += $(DEFINE)
+CFLAGS += $(DEF_OPT)
 CFLAGS += $(INCLUDE)
 #CFLAGS += -fdump-tree-optimized #
 #CFLAGS += -fdump-rtl-dfinish  # 
@@ -85,7 +81,7 @@ CPPFLAGS += -fno-exceptions
 CPPFLAGS += -fno-rtti
 CPPFLAGS += -fno-use-cxa-atexit
 CPPFLAGS += $(DEP_OPT)
-CPPFLAGS += $(DEFINE)
+CPPFLAGS += $(DEF_OPT)
 CPPFLAGS += $(INCLUDE)
 
 ################  Assembler Options
@@ -99,7 +95,7 @@ CPPFLAGS += $(INCLUDE)
 ASFLAGS  = $(FLAGS)
 #ASFLAGS += -Wa,-gstabs,--listing-cont-lines=100
 ASFLAGS += $(DEP_OPT)
-ASFLAGS += $(DEFINE)
+ASFLAGS += $(DEF_OPT)
 ASFLAGS += $(INCLUDE)
 ASFLAGS += -x assembler-with-cpp 
 
@@ -231,15 +227,6 @@ size: $(TARGET).elf
 	@$(SIZE) --format=gnu $< > $(TARGET).size
 	@$(SIZE) --format=sysv --radix=16 --common $< >> $(TARGET).size
 
-prog: $(TARGET).hex
-	st-link_cli -P $(TARGET).hex -Rst
-#	stm32_isp.exe stm32_conf.ini
-
-run:
-	st-link_cli -Rst
-
-gdb: $(TARGET).elf
-	$(GDB) $<
 
 # Display compiler version information.
 gccversion : 
